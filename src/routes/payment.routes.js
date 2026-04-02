@@ -3,7 +3,7 @@ import { createOrder, success } from '../controllers/payment.controller.js';
 
 const router = Router();
 
-router.post('/create-order', createOrder );
+router.get('/create-order', createOrder );
 
 router.get('/success', success);
 router.post('/success', success);
