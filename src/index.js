@@ -2,9 +2,11 @@ import express from 'express';
 import morgan from 'morgan';
 import paymentRoutes from './routes/payment.routes.js';
 import {PORT} from './config.js';
+import dotenv from 'dotenv';
+
 const app = express();
 //post
-app.use(express.urlencoded({ extemded:true }));
+app.use(express.urlencoded({ extended:true }));
 app.use(express.json());
 app.use(morgan('dev'));
 

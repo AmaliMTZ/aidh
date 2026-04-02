@@ -1,17 +1,19 @@
-//  Crear orden (envía a Banorte)
+// Crear orden (envía a Banorte)
 export const createOrder = (req, res) => {
 
   const data = {
-    MERCHANT_ID: "TU_MERCHANT_ID",
-    USER: "TU_USUARIO",
-    PASSWORD: "TU_PASSWORD",
-    TERMINAL_ID: "TU_TERMINAL",
+    MERCHANT_ID: process.env.MERCHANT_ID,
+    USER: process.env.USER_BANORTE,
+    PASSWORD: process.env.PASSWORD_BANORTE,
+    TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
     MODE: "AUT", // modo prueba
     CONTROL_NUMBER: "ORD" + Date.now(),
     CUSTOMER_REF1: "Pago prueba",
-    RESPONSE_URL: "http://localhost:2026/success"
+
+    // ⚠️ CAMBIAR ESTO DESPUÉS DE RENDER
+    RESPONSE_URL: `${process.env.BASE_URL}/success`
   };
 
   res.send(`
@@ -44,17 +46,14 @@ export const createOrder = (req, res) => {
 };
 
 
-
 // Recibir respuesta del banco
 export const success = (req, res) => {
 
   console.log("Query:", req.query);
   console.log("Body:", req.body);
 
-  // Detecta si viene por GET o POST
   const data = req.method === "POST" ? req.body : req.query;
 
-  
   const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
 
   if (result === "A") {
