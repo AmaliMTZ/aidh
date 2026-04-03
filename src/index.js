@@ -1,16 +1,17 @@
 import express from 'express';
 import morgan from 'morgan';
 import paymentRoutes from './routes/payment.routes.js';
-import {PORT} from './config.js';
+import { PORT } from './config.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 
 dotenv.config();
 
 const app = express();
+
 app.use(cors());
-//post
-app.use(express.urlencoded({ extended:true }));
+
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan('dev'));
 

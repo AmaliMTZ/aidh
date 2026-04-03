@@ -1,6 +1,8 @@
 // Crear orden (envía a Banorte)
 export const createOrder = (req, res) => {
 
+  const { nombre, correo } = req.query;
+
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
     USER: process.env.USER_BANORTE,
@@ -8,11 +10,13 @@ export const createOrder = (req, res) => {
     TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
-    MODE: "AUT", // modo prueba
+    MODE: "AUT", //cambiar despues de las pruebas
+    
     CONTROL_NUMBER: "ORD" + Date.now(),
-    CUSTOMER_REF1: "Pago prueba",
 
-    // ⚠️ CAMBIAR ESTO DESPUÉS DE RENDER
+    CUSTOMER_REF1: nombre || "Sin nombre",
+    CUSTOMER_REF2: correo || "Sin correo",
+
     RESPONSE_URL: `${process.env.BASE_URL}/success`
   };
 
@@ -32,6 +36,7 @@ export const createOrder = (req, res) => {
           <input type="hidden" name="MODE" value="${data.MODE}" />
           <input type="hidden" name="CONTROL_NUMBER" value="${data.CONTROL_NUMBER}" />
           <input type="hidden" name="CUSTOMER_REF1" value="${data.CUSTOMER_REF1}" />
+          <input type="hidden" name="CUSTOMER_REF2" value="${data.CUSTOMER_REF2}" />
           <input type="hidden" name="RESPONSE_URL" value="${data.RESPONSE_URL}" />
 
         </form>
@@ -57,11 +62,32 @@ export const success = (req, res) => {
   const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
 
   if (result === "A") {
-    res.send("Pago aprobado");
+    res.send(`
+      <html>
+        <body>
+          <h1>Pago aprobado</h1>
+          <p>Gracias por tu pago</p>
+        </body>
+      </html>
+    `);
   } else if (result === "D") {
-    res.send("Pago declinado");
+    res.send(`
+      <html>
+        <body>
+          <h1>Pago declinado</h1>
+          <p>Intenta nuevamente</p>
+        </body>
+      </html>
+    `);
   } else if (result === "R") {
-    res.send("Pago rechazado");
+    res.send(`
+      <html>
+        <body>
+          <h1>Pago rechazado</h1>
+          <p>Verifica tus datos</p>
+        </body>
+      </html>
+    `);
   } else {
     res.send("Sin resultado o prueba");
   }
