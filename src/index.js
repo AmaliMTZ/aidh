@@ -9,14 +9,21 @@ dotenv.config();
 
 const app = express();
 
+// Middlewares
 app.use(cors());
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // para forms (Banorte)
+app.use(express.json()); // para JSON
 app.use(morgan('dev'));
 
-app.use(paymentRoutes);
+// Rutas
+app.use('/', paymentRoutes);
 
+// Ruta de prueba (opcional pero útil)
+app.get('/', (req, res) => {
+  res.send('Backend Banorte funcionando ');
+});
+
+// Puerto
 const port = process.env.PORT || PORT;
 
 app.listen(port, () => {
