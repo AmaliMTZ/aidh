@@ -15,7 +15,9 @@ export const createOrder = (req, res) => {
     TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
-    MODE: "AUT", // ⚠️ cambiar a PRD en producción
+    MODE: "AUT", // 🔥 modo pruebas
+
+    ENTRY_MODE: "MANUAL", // 🔥 IMPORTANTE
 
     CONTROL_NUMBER: "ORD" + Date.now().toString(),
 
@@ -39,6 +41,10 @@ export const createOrder = (req, res) => {
           <input type="hidden" name="CMD_TRANS" value="${data.CMD_TRANS}" />
           <input type="hidden" name="AMOUNT" value="${data.AMOUNT}" />
           <input type="hidden" name="MODE" value="${data.MODE}" />
+
+          <!-- 🔥 NUEVO -->
+          <input type="hidden" name="ENTRY_MODE" value="${data.ENTRY_MODE}" />
+
           <input type="hidden" name="CONTROL_NUMBER" value="${data.CONTROL_NUMBER}" />
           <input type="hidden" name="CUSTOMER_REF1" value="${data.CUSTOMER_REF1}" />
           <input type="hidden" name="CUSTOMER_REF2" value="${data.CUSTOMER_REF2}" />
