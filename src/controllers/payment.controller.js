@@ -3,21 +3,18 @@ export const createOrder = (req, res) => {
 
   const { nombre, correo } = req.query;
 
-  // Validación básica
   if (!nombre || !correo) {
     return res.status(400).send("Faltan datos (nombre o correo)");
   }
 
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
-    ID_AFILIACION: process.env.MERCHANT_ID,
     USER: process.env.USER_BANORTE,
     PASSWORD: process.env.PASSWORD_BANORTE,
     TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
     MODE: "AUT",
-    ENTRY_MODE: "MANUAL",
 
     CONTROL_NUMBER: "ORD" + Date.now().toString(),
 
@@ -27,6 +24,8 @@ export const createOrder = (req, res) => {
     RESPONSE_URL: `${process.env.BASE_URL}/success`
   };
 
+  console.log("DATOS ENVIADOS:", data);
+
   res.send(`
     <html>
       <body>
@@ -35,14 +34,12 @@ export const createOrder = (req, res) => {
         <form id="form" action="https://via.pagosbanorte.com/payw2" method="POST">
 
           <input type="hidden" name="MERCHANT_ID" value="${data.MERCHANT_ID}" />
-          <input type="hidden" name="ID_AFILIACION" value="${data.ID_AFILIACION}" />
           <input type="hidden" name="USER" value="${data.USER}" />
           <input type="hidden" name="PASSWORD" value="${data.PASSWORD}" />
           <input type="hidden" name="TERMINAL_ID" value="${data.TERMINAL_ID}" />
           <input type="hidden" name="CMD_TRANS" value="${data.CMD_TRANS}" />
           <input type="hidden" name="AMOUNT" value="${data.AMOUNT}" />
           <input type="hidden" name="MODE" value="${data.MODE}" />
-          <input type="hidden" name="ENTRY_MODE" value="${data.ENTRY_MODE}" />
 
           <input type="hidden" name="CONTROL_NUMBER" value="${data.CONTROL_NUMBER}" />
           <input type="hidden" name="CUSTOMER_REF1" value="${data.CUSTOMER_REF1}" />
@@ -58,27 +55,4 @@ export const createOrder = (req, res) => {
       </body>
     </html>
   `);
-};
-
-
-// Recibir respuesta del banco
-export const success = (req, res) => {
-
-  const data = req.method === "POST" ? req.body : req.query;
-
-  console.log("Respuesta Banorte:", data);
-
-  if (!data || Object.keys(data).length === 0) {
-    return res.send("Ruta success activa, esperando respuesta de Banorte...");
-  }
-
-  const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
-
-  if (result === "A") {
-    return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=ok");
-  } else if (result === "D" || result === "R") {
-    return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=error");
-  } else {
-    return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=unknown");
-  }
 };
