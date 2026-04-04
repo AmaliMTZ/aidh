@@ -10,14 +10,14 @@ export const createOrder = (req, res) => {
 
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
+    ID_AFILIACION: process.env.MERCHANT_ID,
     USER: process.env.USER_BANORTE,
     PASSWORD: process.env.PASSWORD_BANORTE,
     TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
-    MODE: "AUT", // 🔥 modo pruebas
-
-    ENTRY_MODE: "MANUAL", // 🔥 IMPORTANTE
+    MODE: "AUT",
+    ENTRY_MODE: "MANUAL",
 
     CONTROL_NUMBER: "ORD" + Date.now().toString(),
 
@@ -35,14 +35,13 @@ export const createOrder = (req, res) => {
         <form id="form" action="https://via.pagosbanorte.com/payw2" method="POST">
 
           <input type="hidden" name="MERCHANT_ID" value="${data.MERCHANT_ID}" />
+          <input type="hidden" name="ID_AFILIACION" value="${data.ID_AFILIACION}" />
           <input type="hidden" name="USER" value="${data.USER}" />
           <input type="hidden" name="PASSWORD" value="${data.PASSWORD}" />
           <input type="hidden" name="TERMINAL_ID" value="${data.TERMINAL_ID}" />
           <input type="hidden" name="CMD_TRANS" value="${data.CMD_TRANS}" />
           <input type="hidden" name="AMOUNT" value="${data.AMOUNT}" />
           <input type="hidden" name="MODE" value="${data.MODE}" />
-
-          <!-- 🔥 NUEVO -->
           <input type="hidden" name="ENTRY_MODE" value="${data.ENTRY_MODE}" />
 
           <input type="hidden" name="CONTROL_NUMBER" value="${data.CONTROL_NUMBER}" />
@@ -69,7 +68,6 @@ export const success = (req, res) => {
 
   console.log("Respuesta Banorte:", data);
 
-  // Si entras directo sin datos
   if (!data || Object.keys(data).length === 0) {
     return res.send("Ruta success activa, esperando respuesta de Banorte...");
   }
