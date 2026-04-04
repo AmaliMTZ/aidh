@@ -14,7 +14,7 @@ export const createOrder = (req, res) => {
     TERMINAL_ID: process.env.TERMINAL_ID,
     CMD_TRANS: "VENTA",
     AMOUNT: "100.00",
-    MODE: "AUT",
+    MODE: "AUT", // ✅ CORRECTO
 
     CONTROL_NUMBER: "ORD" + Date.now().toString(),
 
@@ -24,7 +24,7 @@ export const createOrder = (req, res) => {
     RESPONSE_URL: `${process.env.BASE_URL}/success`
   };
 
-  console.log("DATOS ENVIADOS:", data);
+  console.log("DATOS:", data);
 
   res.send(`
     <html>
