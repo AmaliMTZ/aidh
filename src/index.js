@@ -1,6 +1,6 @@
 import express from 'express';
 import morgan from 'morgan';
-import paymentRoutes from './src/route/payment.routes.js';
+import paymentRoute from './src/route/payment.route.js';
 import { PORT } from './config.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
