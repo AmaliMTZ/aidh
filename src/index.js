@@ -16,7 +16,7 @@ app.use(express.json()); // necesario para JSON
 app.use(morgan('dev')); // logs de desarrollo
 
 // Rutas de pago con prefijo
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment', paymentRoute);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
