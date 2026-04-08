@@ -3,7 +3,7 @@ export const createOrder = (req, res) => {
 
   // Validación de datos obligatorios
   if (!nombre || !correo || !cardNumber || !cardExp || !cvv || !amount) {
-    return res.status(400).send("Faltan datos obligatorios para la transacción");
+    return res.status(400).send("Faltan datos obligatorios para la transaccion");
   }
 
   const data = {
@@ -18,7 +18,7 @@ export const createOrder = (req, res) => {
     CONTROL_NUMBER: "ORD" + Date.now(),
 
     CARD_NUMBER: cardNumber,
-    CARD_EXP: cardExp, // formato MMAA
+    CARD_EXP: cardExp, // formato   MMAA
     SECURITY_CODE: cvv,
     ENTRY_MODE: "MANUAL",
 
@@ -54,6 +54,7 @@ export const success = (req, res) => {
   }
 
   const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
+
 
   switch (result) {
     case "A":
