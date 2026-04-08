@@ -1,11 +1,14 @@
 import express from 'express';
 import morgan from 'morgan';
-import paymentRoute from './src/route/payment.route.js';
+import paymentRoute from './routes/payment.route.js';
 import { PORT } from './config.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 
 dotenv.config();
+
+console.log("deploy nuevo");
+console.log("nuevo deploy corregido");
 
 const app = express();
 
