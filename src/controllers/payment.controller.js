@@ -1,15 +1,64 @@
-export const createOrder = (req, res) => {
+// 🔐 INICIO 3D
+export const start3DSecure = (req, res) => {
   const { nombre, correo, cardNumber, cardExp, cvv, amount } = req.body;
 
-  // Validación de datos obligatorios
-  if (!nombre || !correo || !cardNumber || !cardExp || !cvv || !amount) {
-    return res.status(400).send("Faltan datos obligatorios para la transacción");
+  const controlNumber = "ORD" + Date.now();
+
+  global.paymentData = {
+    nombre,
+    correo,
+    cardNumber,
+    cardExp,
+    cvv,
+    amount,
+    controlNumber
+  };
+
+  const data = {
+    CARD_NUMBER: cardNumber,
+    CARD_EXP: cardExp,
+    AMOUNT: amount,
+    CARD_TYPE: "VISA",
+
+    MERCHANT_ID: process.env.MERCHANT_ID,
+    MERCHANT_NAME: "ACADEMIA IDH",
+    MERCHANT_CITY: "CDMX",
+
+    REFERENCE3D: controlNumber,
+    FORWARD_PATH: `${process.env.BASE_URL}/api/payment/3d-response`
+  };
+
+  res.send(`
+    <form id="form" action="https://via.banorte.com/secure3d/Solucion3DSecure.htm" method="POST">
+      ${Object.entries(data).map(([k,v]) => `<input type="hidden" name="${k}" value="${v}" />`).join("")}
+    </form>
+    <script>document.getElementById('form').submit();</script>
+  `);
+};
+
+// 🔐 RESPUESTA 3D
+export const handle3DResponse = (req, res) => {
+  const { Status, ECI, CAVV, XID } = req.body;
+
+  if (Status !== "200") {
+    return res.send("❌ Autenticación 3D fallida");
   }
 
-  // 🔥 LIMPIEZA DE DATOS (IMPORTANTE)
-  const cleanCardNumber = cardNumber.replace(/\s+/g, "");
-  const cleanExp = cardExp.replace(/\s+/g, "");
-  const cleanCvv = cvv.replace(/\s+/g, "");
+  global.paymentData = {
+    ...global.paymentData,
+    STATUS_3D: Status,
+    ECI,
+    CAVV,
+    XID,
+    VERSION_3D: "2"
+  };
+
+  res.redirect(`${process.env.BASE_URL}/api/payment/create-order`);
+};
+
+// 💳 PAGO
+export const createOrder = (req, res) => {
+  const p = global.paymentData;
 
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
@@ -18,55 +67,39 @@ export const createOrder = (req, res) => {
     TERMINAL_ID: process.env.TERMINAL_ID,
 
     CMD_TRANS: "VENTA",
-
-    // 🔥 FORMATO CORRECTO
-    AMOUNT: parseFloat(amount).toFixed(2),
+    AMOUNT: parseFloat(p.amount).toFixed(2),
     MODE: "AUT",
-    CONTROL_NUMBER: "ORD" + Date.now(),
+    CONTROL_NUMBER: p.controlNumber,
 
-    CARD_NUMBER: cleanCardNumber,
-    CARD_EXP: cleanExp, // MMAA
-    SECURITY_CODE: cleanCvv,
+    CARD_NUMBER: p.cardNumber,
+    CARD_EXP: p.cardExp,
+    SECURITY_CODE: p.cvv,
     ENTRY_MODE: "MANUAL",
 
-    CUSTOMER_REF1: nombre,
-    CUSTOMER_REF2: correo,
+    CUSTOMER_REF1: p.nombre,
+    CUSTOMER_REF2: p.correo,
 
-    // 🔥 IMPORTANTE: URL FIJA (no dependas de env si falla)
-    RESPONSE_URL: "https://backend-banorte.onrender.com/api/payment/success"
+    STATUS_3D: p.STATUS_3D,
+    ECI: p.ECI,
+    CAVV: p.CAVV,
+    VERSION_3D: p.VERSION_3D,
+
+    RESPONSE_URL: `${process.env.BASE_URL}/api/payment/success`
   };
 
-  // 🔥 LOG SEGURO
-  console.log("Transacción creada:", {
-    nombre,
-    correo,
-    amount: data.AMOUNT
-  });
+  if (p.XID) data.XID = p.XID;
 
   res.send(`
-    <html>
-      <body>
-        <h2>Redirigiendo a Banorte...</h2>
-        <form id="form" action="https://via.pagosbanorte.com/payw2" method="POST">
-          ${Object.entries(data).map(([key, value]) =>
-            `<input type="hidden" name="${key}" value="${value}" />`
-          ).join("\n")}
-        </form>
-        <script>
-          document.getElementById('form').submit();
-        </script>
-      </body>
-    </html>
+    <form id="form" action="https://via.pagosbanorte.com/payw2" method="POST">
+      ${Object.entries(data).map(([k,v]) => `<input type="hidden" name="${k}" value="${v}" />`).join("")}
+    </form>
+    <script>document.getElementById('form').submit();</script>
   `);
 };
 
+// ✅ SUCCESS
 export const success = (req, res) => {
   const data = req.body;
-  console.log("Respuesta Banorte:", data);
-
-  if (!data || Object.keys(data).length === 0) {
-    return res.send("Ruta success activa, esperando respuesta de Banorte...");
-  }
 
   const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
 
