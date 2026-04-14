@@ -10,7 +10,7 @@ const router = Router();
 
 router.post("/3d-secure", start3DSecure);
 router.post("/3d-response", handle3DResponse);
-router.get("/create-order", createOrder);
+router.post("/create-order", createOrder);
 router.post("/success", success);
 
 export default router;
