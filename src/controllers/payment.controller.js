@@ -104,6 +104,7 @@ export const confirmPayment = (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error al confirmar pago"
+    
     });
   }
 };
