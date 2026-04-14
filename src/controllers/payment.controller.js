@@ -56,9 +56,13 @@ export const handle3DResponse = (req, res) => {
   res.redirect(`${process.env.BASE_URL}/api/payment/create-order`);
 };
 
-// 💳 PAGO
+// PAGO
 export const createOrder = (req, res) => {
   const p = global.paymentData;
+
+if (!p) {
+    return res.send("No hay datos de pago. Inicia desde el formulario.");
+  }
 
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
