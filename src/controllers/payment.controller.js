@@ -3,8 +3,13 @@ export const createOrder = (req, res) => {
 
   // Validación de datos obligatorios
   if (!nombre || !correo || !cardNumber || !cardExp || !cvv || !amount) {
-    return res.status(400).send("Faltan datos obligatorios para la transaccion");
+    return res.status(400).send("Faltan datos obligatorios para la transacción");
   }
+
+  // 🔥 LIMPIEZA DE DATOS (IMPORTANTE)
+  const cleanCardNumber = cardNumber.replace(/\s+/g, "");
+  const cleanExp = cardExp.replace(/\s+/g, "");
+  const cleanCvv = cvv.replace(/\s+/g, "");
 
   const data = {
     MERCHANT_ID: process.env.MERCHANT_ID,
@@ -13,22 +18,30 @@ export const createOrder = (req, res) => {
     TERMINAL_ID: process.env.TERMINAL_ID,
 
     CMD_TRANS: "VENTA",
-    AMOUNT: amount,
+
+    // 🔥 FORMATO CORRECTO
+    AMOUNT: parseFloat(amount).toFixed(2),
     MODE: "AUT",
     CONTROL_NUMBER: "ORD" + Date.now(),
 
-    CARD_NUMBER: cardNumber,
-    CARD_EXP: cardExp, // formato   MMAA
-    SECURITY_CODE: cvv,
+    CARD_NUMBER: cleanCardNumber,
+    CARD_EXP: cleanExp, // MMAA
+    SECURITY_CODE: cleanCvv,
     ENTRY_MODE: "MANUAL",
 
     CUSTOMER_REF1: nombre,
     CUSTOMER_REF2: correo,
 
-    RESPONSE_URL: `${process.env.BASE_URL}/api/payment/success`
+    // 🔥 IMPORTANTE: URL FIJA (no dependas de env si falla)
+    RESPONSE_URL: "https://backend-banorte.onrender.com/api/payment/success"
   };
 
-  console.log("DATOS ENVIADOS:", { ...data, PASSWORD: "***" });
+  // 🔥 LOG SEGURO
+  console.log("Transacción creada:", {
+    nombre,
+    correo,
+    amount: data.AMOUNT
+  });
 
   res.send(`
     <html>
@@ -39,7 +52,9 @@ export const createOrder = (req, res) => {
             `<input type="hidden" name="${key}" value="${value}" />`
           ).join("\n")}
         </form>
-        <script>document.getElementById('form').submit();</script>
+        <script>
+          document.getElementById('form').submit();
+        </script>
       </body>
     </html>
   `);
@@ -54,7 +69,6 @@ export const success = (req, res) => {
   }
 
   const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
-
 
   switch (result) {
     case "A":
