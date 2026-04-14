@@ -53,7 +53,12 @@ export const handle3DResponse = (req, res) => {
     VERSION_3D: "2"
   };
 
-  res.redirect(`${process.env.BASE_URL}/api/payment/create-order`);
+  res.send(`
+  <form id="form" action="${process.env.BASE_URL}/api/payment/create-order" method="POST">
+    <input type="hidden" name="ok" value="1" />
+  </form>
+  <script>document.getElementById('form').submit();</script>
+`);
 };
 
 // PAGO
