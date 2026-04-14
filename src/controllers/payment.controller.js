@@ -1,128 +1,109 @@
-// 🔐 INICIO 3D
+import crypto from "crypto";
+
+// 🔐 INICIO 3D SECURE
 export const start3DSecure = (req, res) => {
-  const { nombre, correo, cardNumber, cardExp, cvv, amount } = req.body;
+  try {
+    const { nombre, correo, cardNumber, cardExp, cvv, amount } = req.body;
 
-  const controlNumber = "ORD" + Date.now();
+    // Generar número de control único
+    const controlNumber = "ORD" + Date.now();
 
-  global.paymentData = {
-    nombre,
-    correo,
-    cardNumber,
-    cardExp,
-    cvv,
-    amount,
-    controlNumber
-  };
+    // Guardar datos temporalmente (simulación)
+    global.paymentData = {
+      nombre,
+      correo,
+      cardNumber,
+      cardExp,
+      cvv,
+      amount,
+      controlNumber
+    };
 
-  const data = {
-    CARD_NUMBER: cardNumber,
-    CARD_EXP: cardExp,
-    AMOUNT: amount,
-    CARD_TYPE: "VISA",
+    // Aquí normalmente generas firma/hash para Banorte
+    const hash = crypto
+      .createHash("sha256")
+      .update(controlNumber + amount)
+      .digest("hex");
 
-    MERCHANT_ID: process.env.MERCHANT_ID,
-    MERCHANT_NAME: "ACADEMIA IDH",
-    MERCHANT_CITY: "CDMX",
+    // URL de redirección (simulación de 3D Secure)
+    const redirectUrl = `https://3dsecure.fake/authorize?control=${controlNumber}&hash=${hash}`;
 
-    REFERENCE3D: controlNumber,
-    FORWARD_PATH: `${process.env.BASE_URL}/api/payment/3d-response`
-  };
+    return res.json({
+      success: true,
+      message: "3D Secure iniciado",
+      controlNumber,
+      redirectUrl
+    });
 
-  res.send(`
-    <form id="form" action="https://via.banorte.com/secure3d/Solucion3DSecure.htm" method="POST">
-      ${Object.entries(data).map(([k,v]) => `<input type="hidden" name="${k}" value="${v}" />`).join("")}
-    </form>
-    <script>document.getElementById('form').submit();</script>
-  `);
-};
-
-// 🔐 RESPUESTA 3D
-export const handle3DResponse = (req, res) => {
-  const { Status, ECI, CAVV, XID } = req.body;
-
-  if (Status !== "200") {
-    return res.send("❌ Autenticación 3D fallida");
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al iniciar 3D Secure"
+    });
   }
-
-  global.paymentData = {
-    ...global.paymentData,
-    STATUS_3D: Status,
-    ECI,
-    CAVV,
-    XID,
-    VERSION_3D: "2"
-  };
-
-  res.send(`
-  <form id="form" action="${process.env.BASE_URL}/api/payment/create-order" method="POST">
-    <input type="hidden" name="ok" value="1" />
-  </form>
-  <script>document.getElementById('form').submit();</script>
-`);
 };
 
-// PAGO
-export const createOrder = (req, res) => {
-  const p = global.paymentData;
 
-if (!p) {
-    return res.send("No hay datos de pago. Inicia desde el formulario.");
+// ✅ CALLBACK (cuando el banco responde)
+export const handle3DSecureResponse = (req, res) => {
+  try {
+    const { controlNumber, status } = req.body;
+
+    if (!global.paymentData || global.paymentData.controlNumber !== controlNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Transacción no encontrada"
+      });
+    }
+
+    if (status === "approved") {
+      return res.json({
+        success: true,
+        message: "Pago aprobado",
+        data: global.paymentData
+      });
+    } else {
+      return res.json({
+        success: false,
+        message: "Pago rechazado"
+      });
+    }
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error en respuesta 3D Secure"
+    });
   }
-
-  const data = {
-    MERCHANT_ID: process.env.MERCHANT_ID,
-    USER: process.env.USER_BANORTE,
-    PASSWORD: process.env.PASSWORD_BANORTE,
-    TERMINAL_ID: process.env.TERMINAL_ID,
-
-    CMD_TRANS: "VENTA",
-    AMOUNT: parseFloat(p.amount).toFixed(2),
-    MODE: "AUT",
-    CONTROL_NUMBER: p.controlNumber,
-
-    CARD_NUMBER: p.cardNumber,
-    CARD_EXP: p.cardExp,
-    SECURITY_CODE: p.cvv,
-    ENTRY_MODE: "MANUAL",
-
-    CUSTOMER_REF1: p.nombre,
-    CUSTOMER_REF2: p.correo,
-
-    STATUS_3D: p.STATUS_3D,
-    ECI: p.ECI,
-    CAVV: p.CAVV,
-    VERSION_3D: p.VERSION_3D,
-
-    RESPONSE_URL: `${process.env.BASE_URL}/api/payment/success`
-  };
-
-  if (p.XID) data.XID = p.XID;
-
-  res.send(`
-    <form id="form" action="https://via.pagosbanorte.com/payw2" method="POST">
-      ${Object.entries(data).map(([k,v]) => `<input type="hidden" name="${k}" value="${v}" />`).join("")}
-    </form>
-    <script>document.getElementById('form').submit();</script>
-  `);
 };
 
-// ✅ SUCCESS
-export const success = (req, res) => {
-  const data = req.body;
 
-  const result = data.PAYW_RESULT || data.RESULTADO_PAYW;
+// 💳 CONFIRMAR PAGO (simulación final)
+export const confirmPayment = (req, res) => {
+  try {
+    if (!global.paymentData) {
+      return res.status(400).json({
+        success: false,
+        message: "No hay pago en proceso"
+      });
+    }
 
-  switch (result) {
-    case "A":
-      return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=ok");
-    case "D":
-    case "R":
-      return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=error");
-    case "T":
-      return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=timeout");
-    case "Z":
-      return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=reversal");
-    default:
-      return res.redirect("https://www.academiaidh.org.mx/respuesta-banorte?status=unknown");
+    // Aquí iría la integración real con Banorte
+    console.log("Procesando pago con Banorte...", global.paymentData);
+
+    return res.json({
+      success: true,
+      message: "Pago procesado correctamente",
+      data: global.paymentData
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al confirmar pago"
+    });
   }
 };
