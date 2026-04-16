@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-// 🔐 INICIO 3D SECURE
+//  INICIO 3D SECURE
 export const start3DSecure = (req, res) => {
   try {
     const { nombre, correo, cardNumber, cardExp, cvv, amount } = req.body;
@@ -45,7 +45,7 @@ export const start3DSecure = (req, res) => {
 };
 
 
-// ✅ CALLBACK (cuando el banco responde)
+//  CALLBACK (cuando el banco responde)
 export const handle3DSecureResponse = (req, res) => {
   try {
     const { controlNumber, status } = req.body;
@@ -80,7 +80,7 @@ export const handle3DSecureResponse = (req, res) => {
 };
 
 
-// 💳 CONFIRMAR PAGO (simulación final)
+//  CONFIRMAR PAGO (simulación final)
 export const confirmPayment = (req, res) => {
   try {
     if (!global.paymentData) {
