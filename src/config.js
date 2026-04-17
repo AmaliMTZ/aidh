@@ -1,2 +1,8 @@
-// src/config.js
-export const PORT = process.env.PORT || 2026; 
+export const PORT = process.env.PORT || 3000;
+
+export const {
+  MERCHANT_ID,
+  USER,
+  PASSWORD,
+  TERMINAL
+} = process.env;

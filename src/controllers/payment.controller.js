@@ -1,110 +1,89 @@
-import crypto from "crypto";
+import axios from "axios";
+import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 
-//  INICIO 3D SECURE
-export const start3DSecure = (req, res) => {
+// 🔐 1. 3D Secure
+export const start3DSecure = async (req, res) => {
   try {
-    const { nombre, correo, cardNumber, cardExp, cvv, amount } = req.body;
+    const { cardNumber, cardExp, amount } = req.body;
 
-    // Generar número de control único
-    const controlNumber = "ORD" + Date.now();
+    const data = new URLSearchParams({
+      CARD_NUMBER: cardNumber,
+      CARD_EXP: cardExp,
+      AMOUNT: amount,
+      MERCHANT_ID,
+      MERCHANT_NAME: "MiTienda",
+      MERCHANT_CITY: "CDMX",
+      FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
+      "3D_CERTIFICATION": "03"
+    });
 
-    // Guardar datos temporalmente (simulación)
-    global.paymentData = {
-      nombre,
-      correo,
-      cardNumber,
-      cardExp,
-      cvv,
-      amount,
-      controlNumber
-    };
+    const response = await axios.post(
+      "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
+      data,
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-    // Aquí normalmente generas firma/hash para Banorte
-    const hash = crypto
-      .createHash("sha256")
-      .update(controlNumber + amount)
-      .digest("hex");
-
-    // URL de redirección (simulación de 3D Secure)
-    const redirectUrl = `https://3dsecure.fake/authorize?control=${controlNumber}&hash=${hash}`;
-
-    return res.json({
+    res.json({
       success: true,
       message: "3D Secure iniciado",
-      controlNumber,
-      redirectUrl
+      data: response.data
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Error al iniciar 3D Secure"
-    });
+    console.error(error.response?.data || error.message);
+    res.status(500).json({ success: false, message: "Error 3D Secure" });
   }
 };
 
 
-//  CALLBACK (cuando el banco responde)
-export const handle3DSecureResponse = (req, res) => {
+// 🏦 2. RESPUESTA BANORTE (AUTOMÁTICO)
+export const handle3DSecureResponse = async (req, res) => {
   try {
-    const { controlNumber, status } = req.body;
+    const { Status } = req.body;
 
-    if (!global.paymentData || global.paymentData.controlNumber !== controlNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Transacción no encontrada"
-      });
+    if (Status !== "200") {
+      return res.send("Pago rechazado en 3D Secure ❌");
     }
 
-    if (status === "approved") {
-      return res.json({
-        success: true,
-        message: "Pago aprobado",
-        data: global.paymentData
-      });
-    } else {
-      return res.json({
-        success: false,
-        message: "Pago rechazado"
-      });
-    }
+    // 👉 redirigir automáticamente a confirmación
+    res.redirect(`${BASE_URL}/api/payment/confirm-auto`);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Error en respuesta 3D Secure"
-    });
+    res.send("Error en 3D");
   }
 };
 
 
-//  CONFIRMAR PAGO (simulación final)
-export const confirmPayment = (req, res) => {
+// 💳 3. CONFIRMAR PAGO AUTOMÁTICO
+export const confirmAuto = async (req, res) => {
   try {
-    if (!global.paymentData) {
-      return res.status(400).json({
-        success: false,
-        message: "No hay pago en proceso"
-      });
-    }
 
-    // Aquí iría la integración real con Banorte
-    console.log("Procesando pago con Banorte...", global.paymentData);
-
-    return res.json({
-      success: true,
-      message: "Pago procesado correctamente",
-      data: global.paymentData
+    const data = new URLSearchParams({
+      ID_AFILIACION: MERCHANT_ID,
+      USUARIO: USER,
+      CLAVE_USR: PASSWORD,
+      ID_TERMINAL: TERMINAL,
+      CMD_TRANS: "VENTA",
+      AMOUNT: "10.00",
+      CARD_NUMBER: "4111111111111111",
+      CARD_EXP: "2512",
+      SECURITY_CODE: "123",
+      ENTRY_MODE: "MANUAL",
+      MODE: "AUT"
     });
+
+    const response = await axios.post(
+      "https://via.pagosbanorte.com/payw2",
+      data,
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    res.send(`
+      <h1>Resultado del pago</h1>
+      <pre>${JSON.stringify(response.data, null, 2)}</pre>
+    `);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Error al confirmar pago"
-    
-    });
+    res.send("Error al confirmar pago");
   }
 };

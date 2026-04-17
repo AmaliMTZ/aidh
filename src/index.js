@@ -4,32 +4,26 @@ import paymentRoute from './routes/payment.route.js';
 import { PORT } from './config.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
+import path from "path";
 
 dotenv.config();
 
-console.log("deploy nuevo");
-console.log("nuevo deploy corregido");
-
 const app = express();
 
-// Middlewares
 app.use(cors());
-app.use(express.urlencoded({ extended: true })); // necesario para recibir datos de Banorte
-app.use(express.json()); // necesario para JSON
-app.use(morgan('dev')); // logs de desarrollo
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(morgan('dev'));
 
-// Rutas de pago con prefijo
+// servir HTML
+app.use(express.static("public"));
+
 app.use('/api/payment', paymentRoute);
 
-// Ruta de prueba
 app.get('/', (req, res) => {
-  res.send('Backend Banorte funcionando correctamente');
+  res.send('Backend Banorte funcionando 🚀');
 });
 
-// Puerto dinámico (Render asigna uno automáticamente)
-const port = process.env.PORT || PORT;
-
-app.listen(port, () => {
-  console.log(`Servidor corriendo en puerto ${port}`);
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
