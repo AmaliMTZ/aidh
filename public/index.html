@@ -1,118 +1,174 @@
-import axios from "axios";
-import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
-import { createOrder, getOrder, updateOrder } from "../services/order.service.js";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pago seguro</title>
 
-// 🔐 1. INICIAR 3D
-export const start3DSecure = async (req, res) => {
-  try {
-    const { cardNumber, cardExp, amount } = req.body;
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #6a1b9a, #9c27b0);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
 
-    const controlNumber = createOrder({ amount });
+.container {
+  background: #fff;
+  padding: 25px;
+  border-radius: 15px;
+  width: 300px; /* 🔥 más compacto */
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
 
-    const data = new URLSearchParams({
-      CARD_NUMBER: cardNumber,
-      CARD_EXP: cardExp,
-      AMOUNT: amount,
-      MERCHANT_ID,
-      MERCHANT_NAME: "MiTienda",
-      MERCHANT_CITY: "CDMX",
-      FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
-      "3D_CERTIFICATION": "03",
-      CONTROL_NUMBER: controlNumber
-    });
+h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
 
-    const response = await axios.post(
-      "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
-      data,
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+input {
+  width: 100%;
+  padding: 10px; /* 🔥 más chico */
+  margin: 6px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
 
-    res.send(response.data);
+input:focus {
+  border-color: #7b1fa2;
+  box-shadow: 0 0 4px rgba(123,31,162,0.4);
+  outline: none;
+}
 
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    res.status(500).send("Error iniciando 3D Secure");
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background: #7b1fa2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #4a0072;
+}
+
+.toggle {
+  font-size: 12px;
+  cursor: pointer;
+  text-align: right;
+  color: #7b1fa2;
+}
+
+#resultado {
+  text-align: center;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Pago seguro</h2>
+
+  <form id="formPago">
+
+    <input name="nombre" placeholder="Nombre completo" required>
+    <input name="correo" placeholder="Correo electrónico" required>
+
+    <input id="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
+
+    <input id="cardExp" placeholder="MM/AA" required>
+
+    <input id="cvv" type="password" placeholder="CVV" maxlength="3" required>
+    <div class="toggle" onclick="toggleCVV()">👁 Mostrar CVV</div>
+
+    <input id="amount" placeholder="Monto" required>
+
+    <button type="submit">Pagar</button>
+
+  </form>
+
+  <p id="resultado"></p>
+</div>
+
+<script>
+const cardNumber = document.getElementById("cardNumber");
+const cvv = document.getElementById("cvv");
+const exp = document.getElementById("cardExp");
+
+// 🔒 Solo números tarjeta
+cardNumber.addEventListener("input", () => {
+  cardNumber.value = cardNumber.value.replace(/\D/g, "");
+});
+
+// 🔒 Solo números CVV
+cvv.addEventListener("input", () => {
+  cvv.value = cvv.value.replace(/\D/g, "");
+});
+
+// 🔒 Formato MM/AA
+exp.addEventListener("input", (e) => {
+  let v = e.target.value.replace(/\D/g, "");
+  if (v.length >= 3) {
+    v = v.substring(0,2) + "/" + v.substring(2,4);
   }
-};
+  e.target.value = v;
+});
 
-// 🔁 2. RESPUESTA 3D
-export const handle3DSecureResponse = async (req, res) => {
-  try {
-    const data = req.method === "POST" ? req.body : req.query;
+// 👁 Mostrar/ocultar CVV
+function toggleCVV() {
+  cvv.type = cvv.type === "password" ? "text" : "password";
+}
 
-    const {
-      Status,
-      ECI,
-      XID,
-      CAVV,
-      CONTROL_NUMBER
-    } = data;
+// 🚀 Enviar
+document.getElementById("formPago").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    if (Status !== "200") {
-      updateOrder(CONTROL_NUMBER, { status: "failed" });
-      return res.send("❌ Autenticación rechazada");
-    }
-
-    updateOrder(CONTROL_NUMBER, {
-      status: "3d_ok",
-      ECI,
-      XID,
-      CAVV
-    });
-
-    res.redirect(`${BASE_URL}/api/payment/confirm?cn=${CONTROL_NUMBER}`);
-
-  } catch (error) {
-    console.error(error);
-    res.send("Error en 3D");
+  if (cardNumber.value.length !== 16) {
+    alert("La tarjeta debe tener 16 dígitos");
+    return;
   }
-};
 
-// 💳 3. CONFIRMAR PAGO
-export const confirmPayment = async (req, res) => {
-  try {
-    const { cn } = req.query;
-
-    const order = getOrder(cn);
-
-    if (!order) {
-      return res.send("Orden no encontrada");
-    }
-
-    const data = new URLSearchParams({
-      ID_AFILIACION: MERCHANT_ID,
-      USUARIO: USER,
-      CLAVE_USR: PASSWORD,
-      ID_TERMINAL: TERMINAL,
-      CMD_TRANS: "VENTA",
-      AMOUNT: order.amount,
-      CONTROL_NUMBER: cn,
-      MODE: "AUT",
-      ENTRY_MODE: "MANUAL",
-
-      ECI: order.ECI,
-      XID: order.XID,
-      CAVV: order.CAVV
-    });
-
-    const response = await axios.post(
-      "https://via.pagosbanorte.com/payw2",
-      data,
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
-
-    updateOrder(cn, {
-      status: "success",
-      response: response.data
-    });
-
-    res.send(`
-      <h1>Pago procesado</h1>
-      <pre>${JSON.stringify(response.data, null, 2)}</pre>
-    `);
-
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    res.send("Error al confirmar pago");
+  if (cvv.value.length !== 3) {
+    alert("CVV inválido");
+    return;
   }
-};
+
+  const data = {
+    cardNumber: cardNumber.value,
+    cardExp: exp.value.replace("/", ""),
+    cvv: cvv.value,
+    amount: document.getElementById("amount").value
+  };
+
+  try {
+    const res = await fetch("/api/payment/3d-secure", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
+
+    const html = await res.text();
+
+    document.open();
+    document.write(html);
+    document.close();
+
+  } catch {
+    document.getElementById("resultado").innerText = "Error de conexión";
+  }
+});
+</script>
+
+</body>
+</html>
