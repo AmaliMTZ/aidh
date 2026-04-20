@@ -4,5 +4,6 @@ export const {
   MERCHANT_ID,
   USER,
   PASSWORD,
-  TERMINAL
+  TERMINAL,
+  BASE_URL
 } = process.env;

@@ -6,6 +6,10 @@ export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, amount } = req.body;
 
+    if (!cardNumber || !cardExp || !amount) {
+      return res.status(400).json({ error: "Faltan datos" });
+    }
+
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
@@ -30,13 +34,13 @@ export const start3DSecure = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error("Error 3D:", error.response?.data || error.message);
     res.status(500).json({ success: false, message: "Error 3D Secure" });
   }
 };
 
 
-// 🏦 2. RESPUESTA BANORTE (AUTOMÁTICO)
+// 🏦 2. RESPUESTA BANORTE
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const { Status } = req.body;
@@ -45,16 +49,16 @@ export const handle3DSecureResponse = async (req, res) => {
       return res.send("Pago rechazado en 3D Secure ❌");
     }
 
-    // 👉 redirigir automáticamente a confirmación
     res.redirect(`${BASE_URL}/api/payment/confirm-auto`);
 
   } catch (error) {
+    console.error(error);
     res.send("Error en 3D");
   }
 };
 
 
-// 💳 3. CONFIRMAR PAGO AUTOMÁTICO
+// 💳 3. CONFIRMAR PAGO
 export const confirmAuto = async (req, res) => {
   try {
 
@@ -84,6 +88,7 @@ export const confirmAuto = async (req, res) => {
     `);
 
   } catch (error) {
+    console.error("Error pago:", error.response?.data || error.message);
     res.send("Error al confirmar pago");
   }
 };

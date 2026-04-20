@@ -2,13 +2,13 @@ import { Router } from "express";
 import {
   start3DSecure,
   handle3DSecureResponse,
-  confirmPayment
+  confirmAuto
 } from "../controllers/payment.controller.js";
 
 const router = Router();
 
 router.post("/3d-secure", start3DSecure);
 router.post("/3d-response", handle3DSecureResponse);
-router.post("/confirm", confirmPayment);
+router.get("/confirm-auto", confirmAuto);
 
 export default router;
