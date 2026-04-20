@@ -1,13 +1,34 @@
 import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
-import { createOrder, getOrder, updateOrder } from "../services/order.service.js";
+import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 
-// 🔐 1. INICIAR 3D
+//  1. INICIAR 3D SECURE
 export const start3DSecure = async (req, res) => {
   try {
-    const { cardNumber, cardExp, amount } = req.body;
+    const { cardNumber, cardExp, cvv, amount } = req.body;
 
-    const controlNumber = createOrder({ amount });
+    //  VALIDACIONES
+    if (!cardNumber || cardNumber.length !== 16) {
+      return res.status(400).send("Tarjeta inválida");
+    }
+
+    if (!cvv || cvv.length !== 3) {
+      return res.status(400).send("CVV inválido");
+    }
+
+    if (!amount) {
+      return res.status(400).send("Monto requerido");
+    }
+
+    const controlNumber = "ORD" + Date.now();
+
+    // guardar temporalmente
+    createOrder(controlNumber, {
+      cardNumber,
+      cardExp,
+      cvv,
+      amount
+    });
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
@@ -17,8 +38,8 @@ export const start3DSecure = async (req, res) => {
       MERCHANT_NAME: "MiTienda",
       MERCHANT_CITY: "CDMX",
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
-      "3D_CERTIFICATION": "03",
-      CONTROL_NUMBER: controlNumber
+      CONTROL_NUMBER: controlNumber,
+      "3D_CERTIFICATION": "03"
     });
 
     const response = await axios.post(
@@ -30,89 +51,63 @@ export const start3DSecure = async (req, res) => {
     res.send(response.data);
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error("Error 3D:", error.message);
     res.status(500).send("Error iniciando 3D Secure");
   }
 };
 
-// 🔁 2. RESPUESTA 3D
+//  2. RESPUESTA BANORTE
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
 
     const {
       Status,
-      ECI,
-      XID,
-      CAVV,
       CONTROL_NUMBER
     } = data;
 
     if (Status !== "200") {
-      updateOrder(CONTROL_NUMBER, { status: "failed" });
-      return res.send("❌ Autenticación rechazada");
+      deleteOrder(CONTROL_NUMBER);
+      return res.send(" Autenticación rechazada");
     }
 
-    updateOrder(CONTROL_NUMBER, {
-      status: "3d_ok",
-      ECI,
-      XID,
-      CAVV
-    });
-
-    res.redirect(`${BASE_URL}/api/payment/confirm?cn=${CONTROL_NUMBER}`);
-
-  } catch (error) {
-    console.error(error);
-    res.send("Error en 3D");
-  }
-};
-
-// 💳 3. CONFIRMAR PAGO
-export const confirmPayment = async (req, res) => {
-  try {
-    const { cn } = req.query;
-
-    const order = getOrder(cn);
+    const order = getOrder(CONTROL_NUMBER);
 
     if (!order) {
       return res.send("Orden no encontrada");
     }
 
-    const data = new URLSearchParams({
+    // CONFIRMAR PAGO
+    const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
       AMOUNT: order.amount,
-      CONTROL_NUMBER: cn,
-      MODE: "AUT",
+      CARD_NUMBER: order.cardNumber,
+      CARD_EXP: order.cardExp,
+      SECURITY_CODE: order.cvv,
       ENTRY_MODE: "MANUAL",
-
-      ECI: order.ECI,
-      XID: order.XID,
-      CAVV: order.CAVV
+      MODE: "AUT"
     });
 
     const response = await axios.post(
       "https://via.pagosbanorte.com/payw2",
-      data,
+      payload,
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    updateOrder(cn, {
-      status: "success",
-      response: response.data
-    });
+    // eliminar datos sensibles
+    deleteOrder(CONTROL_NUMBER);
 
     res.send(`
       <h1>Pago procesado</h1>
-      <pre>${JSON.stringify(response.data, null, 2)}</pre>
+      <p>Estatus: ${response.data?.response || "OK"}</p>
     `);
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error("Error pago:", error.message);
     res.send("Error al confirmar pago");
   }
 };

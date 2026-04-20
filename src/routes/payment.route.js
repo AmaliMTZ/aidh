@@ -1,18 +1,15 @@
 import { Router } from "express";
 import {
   start3DSecure,
-  handle3DSecureResponse,
-  confirmPayment
+  handle3DSecureResponse
 } from "../controllers/payment.controller.js";
 
 const router = Router();
 
 router.post("/3d-secure", start3DSecure);
 
-// 🔥 IMPORTANTE: aceptar POST y GET
+// aceptar GET y POST (IMPORTANTE)
 router.post("/3d-response", handle3DSecureResponse);
 router.get("/3d-response", handle3DSecureResponse);
-
-router.get("/confirm", confirmPayment);
 
 export default router;
