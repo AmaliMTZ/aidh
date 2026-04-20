@@ -126,7 +126,11 @@ form.addEventListener("submit", async (e) => {
       body: JSON.stringify(data)
     });
 
-    const response = await res.json();
+    const html = await res.text();
+
+document.open();
+document.write(html);
+document.close();
 
     if (response.success) {
       resultado.innerText = "Procesando pago...";
