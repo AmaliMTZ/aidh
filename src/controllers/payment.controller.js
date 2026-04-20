@@ -2,12 +2,11 @@ import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, updateOrder } from "../services/order.service.js";
 
-// 🔐 1. INICIAR 3D SECURE
+// 🔐 1. INICIAR 3D
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, amount } = req.body;
 
-    // Crear orden
     const controlNumber = createOrder({ amount });
 
     const data = new URLSearchParams({
@@ -36,16 +35,18 @@ export const start3DSecure = async (req, res) => {
   }
 };
 
-// 🔁 2. RESPUESTA DE BANORTE (3D)
+// 🔁 2. RESPUESTA 3D
 export const handle3DSecureResponse = async (req, res) => {
   try {
+    const data = req.method === "POST" ? req.body : req.query;
+
     const {
       Status,
       ECI,
       XID,
       CAVV,
       CONTROL_NUMBER
-    } = req.body;
+    } = data;
 
     if (Status !== "200") {
       updateOrder(CONTROL_NUMBER, { status: "failed" });
@@ -59,7 +60,6 @@ export const handle3DSecureResponse = async (req, res) => {
       CAVV
     });
 
-    // Redirigir a confirmar pago
     res.redirect(`${BASE_URL}/api/payment/confirm?cn=${CONTROL_NUMBER}`);
 
   } catch (error) {
@@ -68,7 +68,7 @@ export const handle3DSecureResponse = async (req, res) => {
   }
 };
 
-// 💳 3. CONFIRMAR PAGO (PAYWORKS)
+// 💳 3. CONFIRMAR PAGO
 export const confirmPayment = async (req, res) => {
   try {
     const { cn } = req.query;
@@ -90,7 +90,6 @@ export const confirmPayment = async (req, res) => {
       MODE: "AUT",
       ENTRY_MODE: "MANUAL",
 
-      // 🔥 VARIABLES 3D (CLAVE)
       ECI: order.ECI,
       XID: order.XID,
       CAVV: order.CAVV

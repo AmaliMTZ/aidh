@@ -1,148 +1,118 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Pago con tarjeta</title>
+import axios from "axios";
+import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
+import { createOrder, getOrder, updateOrder } from "../services/order.service.js";
 
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f2f2f2;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-}
-
-.container {
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  width: 340px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-input {
-  width: 100%;
-  padding: 12px;
-  margin: 8px 0;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  transition: 0.2s;
-}
-
-/* 🔥 toque morado elegante */
-input:focus {
-  border-color: #7b1fa2;
-  box-shadow: 0 0 4px rgba(123,31,162,0.4);
-  outline: none;
-}
-
-button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: #7b1fa2; /* morado */
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-button:hover {
-  background: #4a0072;
-}
-
-#resultado {
-  text-align: center;
-  margin-top: 10px;
-  font-size: 14px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-  <h2>Pago con tarjeta</h2>
-
-  <form id="formPago">
-
-    <input name="nombre" placeholder="Nombre completo" required>
-    <input name="correo" placeholder="Correo electrónico" required>
-    <input name="cardNumber" placeholder="Número de tarjeta" required>
-    <input id="cardExp" name="cardExp" placeholder="MM/AA" required>
-    <input name="cvv" placeholder="CVV" required>
-    <input name="amount" value="10.00" required>
-
-    <button type="submit">Pagar</button>
-
-  </form>
-
-  <p id="resultado"></p>
-</div>
-
-<script>
-const form = document.getElementById("formPago");
-const inputExp = document.getElementById("cardExp");
-const resultado = document.getElementById("resultado");
-
-// formato MM/AA
-inputExp.addEventListener("input", function(e) {
-  let value = e.target.value.replace(/\D/g, "");
-  if (value.length >= 3) {
-    value = value.substring(0,2) + "/" + value.substring(2,4);
-  }
-  e.target.value = value;
-});
-
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const exp = inputExp.value.replace("/", "");
-
-  const data = {
-    nombre: form.nombre.value,
-    correo: form.correo.value,
-    cardNumber: form.cardNumber.value,
-    cardExp: exp,
-    cvv: form.cvv.value,
-    amount: form.amount.value
-  };
-
+// 🔐 1. INICIAR 3D
+export const start3DSecure = async (req, res) => {
   try {
-    const res = await fetch("https://backend-banorte.onrender.com/api/payment/3d-secure", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+    const { cardNumber, cardExp, amount } = req.body;
+
+    const controlNumber = createOrder({ amount });
+
+    const data = new URLSearchParams({
+      CARD_NUMBER: cardNumber,
+      CARD_EXP: cardExp,
+      AMOUNT: amount,
+      MERCHANT_ID,
+      MERCHANT_NAME: "MiTienda",
+      MERCHANT_CITY: "CDMX",
+      FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
+      "3D_CERTIFICATION": "03",
+      CONTROL_NUMBER: controlNumber
     });
 
-    const html = await res.text();
+    const response = await axios.post(
+      "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
+      data,
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-document.open();
-document.write(html);
-document.close();
-
-    if (response.success) {
-      resultado.innerText = "Procesando pago...";
-    } else {
-      resultado.innerText = "Error: " + response.message;
-    }
+    res.send(response.data);
 
   } catch (error) {
-    resultado.innerText = "Error de conexión";
+    console.error(error.response?.data || error.message);
+    res.status(500).send("Error iniciando 3D Secure");
   }
-});
-</script>
+};
 
-</body>
-</html>
+// 🔁 2. RESPUESTA 3D
+export const handle3DSecureResponse = async (req, res) => {
+  try {
+    const data = req.method === "POST" ? req.body : req.query;
+
+    const {
+      Status,
+      ECI,
+      XID,
+      CAVV,
+      CONTROL_NUMBER
+    } = data;
+
+    if (Status !== "200") {
+      updateOrder(CONTROL_NUMBER, { status: "failed" });
+      return res.send("❌ Autenticación rechazada");
+    }
+
+    updateOrder(CONTROL_NUMBER, {
+      status: "3d_ok",
+      ECI,
+      XID,
+      CAVV
+    });
+
+    res.redirect(`${BASE_URL}/api/payment/confirm?cn=${CONTROL_NUMBER}`);
+
+  } catch (error) {
+    console.error(error);
+    res.send("Error en 3D");
+  }
+};
+
+// 💳 3. CONFIRMAR PAGO
+export const confirmPayment = async (req, res) => {
+  try {
+    const { cn } = req.query;
+
+    const order = getOrder(cn);
+
+    if (!order) {
+      return res.send("Orden no encontrada");
+    }
+
+    const data = new URLSearchParams({
+      ID_AFILIACION: MERCHANT_ID,
+      USUARIO: USER,
+      CLAVE_USR: PASSWORD,
+      ID_TERMINAL: TERMINAL,
+      CMD_TRANS: "VENTA",
+      AMOUNT: order.amount,
+      CONTROL_NUMBER: cn,
+      MODE: "AUT",
+      ENTRY_MODE: "MANUAL",
+
+      ECI: order.ECI,
+      XID: order.XID,
+      CAVV: order.CAVV
+    });
+
+    const response = await axios.post(
+      "https://via.pagosbanorte.com/payw2",
+      data,
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    updateOrder(cn, {
+      status: "success",
+      response: response.data
+    });
+
+    res.send(`
+      <h1>Pago procesado</h1>
+      <pre>${JSON.stringify(response.data, null, 2)}</pre>
+    `);
+
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    res.send("Error al confirmar pago");
+  }
+};
