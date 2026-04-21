@@ -6,8 +6,8 @@
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #6a1b9a, #9c27b0);
+  font-family: Arial;
+  background: #6a1b9a;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -16,24 +16,23 @@ body {
 }
 
 .container {
-  background: #fff;
-  padding: 25px;
-  border-radius: 15px;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
   width: 300px;
 }
 
 input {
   width: 100%;
   padding: 10px;
-  margin: 6px 0;
+  margin: 5px 0;
 }
 
 button {
   width: 100%;
   padding: 10px;
-  background: #7b1fa2;
+  background: purple;
   color: white;
-  border: none;
 }
 </style>
 </head>
@@ -41,60 +40,67 @@ button {
 <body>
 
 <div class="container">
-  <h2>Pago seguro</h2>
+  <h3>Pago</h3>
 
-  <!-- 🔥 SIN action NI method -->
+  <!-- 🔥 SIN action -->
   <form id="formPago">
 
     <input name="nombre" placeholder="Nombre" required>
     <input name="correo" placeholder="Correo" required>
 
-    <input id="cardNumber" placeholder="Tarjeta" required maxlength="16">
+    <input id="cardNumber" placeholder="Tarjeta" required>
     <input id="cardExp" placeholder="MM/AA" required>
-    <input id="cvv" type="password" placeholder="CVV" required maxlength="3">
+    <input id="cvv" type="password" placeholder="CVV" required>
     <input id="amount" placeholder="Monto" required>
 
-    <!-- 🔥 MUY IMPORTANTE -->
     <button type="submit">Pagar</button>
 
   </form>
 </div>
 
 <script>
-const form = document.getElementById("formPago");
+window.onload = () => {
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault(); // 🔥 CLAVE: evita GET
+  const form = document.getElementById("formPago");
 
-  const data = {
-    nombre: form.nombre.value,
-    correo: form.correo.value,
-    cardNumber: document.getElementById("cardNumber").value,
-    cardExp: document.getElementById("cardExp").value.replace("/", ""),
-    cvv: document.getElementById("cvv").value,
-    amount: document.getElementById("amount").value
+  if (!form) {
+    alert("Formulario no encontrado");
+    return;
+  }
+
+  form.onsubmit = async (e) => {
+    e.preventDefault(); // 🔥 CLAVE
+
+    const data = {
+      nombre: form.nombre.value,
+      correo: form.correo.value,
+      cardNumber: document.getElementById("cardNumber").value,
+      cardExp: document.getElementById("cardExp").value.replace("/", ""),
+      cvv: document.getElementById("cvv").value,
+      amount: document.getElementById("amount").value
+    };
+
+    try {
+      const res = await fetch("/api/payment/3d-secure", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
+
+      const html = await res.text();
+
+      document.open();
+      document.write(html);
+      document.close();
+
+    } catch (error) {
+      alert("Error al procesar pago");
+    }
   };
 
-  try {
-    const res = await fetch("/api/payment/3d-secure", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(data)
-    });
-
-    const html = await res.text();
-
-    // 🔥 ESTO MUESTRA BANORTE
-    document.open();
-    document.write(html);
-    document.close();
-
-  } catch (error) {
-    alert("Error al procesar pago");
-  }
-});
+};
 </script>
 
 </body>
