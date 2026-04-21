@@ -47,13 +47,13 @@ button {
     <input name="nombre" placeholder="Nombre" required>
     <input name="correo" placeholder="Correo" required>
 
-    <!--  tarjeta limitada -->
+    <!-- tarjeta 16 dígitos -->
     <input id="cardNumber" placeholder="Tarjeta" maxlength="16" required>
 
-    <!--  mantiene / -->
+    <!-- fecha con formato -->
     <input id="cardExp" placeholder="MM/AA" maxlength="5" required>
 
-    <!-- oculto -->
+    <!-- CVV oculto -->
     <input id="cvv" type="password" placeholder="CVV" maxlength="3" required>
 
     <input id="amount" placeholder="Monto" required>
@@ -67,10 +67,9 @@ button {
 window.onload = () => {
 
   const form = document.getElementById("formPago");
-
-  // formato MM/AA automático
   const expInput = document.getElementById("cardExp");
 
+  // formato automático MM/AA
   expInput.addEventListener("input", (e) => {
     let val = e.target.value.replace(/\D/g, "");
     if (val.length >= 3) {
@@ -85,7 +84,6 @@ window.onload = () => {
     const cardNumber = document.getElementById("cardNumber").value;
     const cvv = document.getElementById("cvv").value;
 
-    // validaciones frontend
     if (cardNumber.length !== 16) {
       alert("La tarjeta debe tener 16 dígitos");
       return;
@@ -116,11 +114,11 @@ window.onload = () => {
 
       const html = await res.text();
 
-      // CORRECTO para Banorte
-      const newWindow = window.open();
-      newWindow.document.open();
-      newWindow.document.write(html);
-      newWindow.document.close();
+      // 🔥 abrir Banorte correctamente
+      const win = window.open();
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
 
     } catch (error) {
       alert("Error al procesar pago");
