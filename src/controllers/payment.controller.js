@@ -2,7 +2,7 @@ import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 
-// 🔐 3D Secure
+// 🔐 INICIO 3D SECURE
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, cvv, amount } = req.body;
@@ -13,14 +13,15 @@ export const start3DSecure = async (req, res) => {
 
     const controlNumber = "ORD" + Date.now();
 
-    // detectar tipo tarjeta
     const cardType =
       cardNumber.startsWith("4") ? "VISA" :
       cardNumber.startsWith("5") ? "MC" :
       "AMEX";
 
-    // guardar orden temporal
     createOrder(controlNumber, { cardNumber, cardExp, cvv, amount });
+
+    // DEBUG (puedes quitarlo después)
+    console.log("BASE_URL:", BASE_URL);
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
@@ -45,9 +46,9 @@ export const start3DSecure = async (req, res) => {
       }
     );
 
-    // 🔥 FIX CLAVE: enviar HTML correctamente
-    res.setHeader("Content-Type", "text/html");
-    res.send(response.data);
+    // 🔥 CLAVE: enviar HTML puro
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(response.data);
 
   } catch (error) {
     console.error("Error 3D:", error.response?.data || error.message);
@@ -56,32 +57,21 @@ export const start3DSecure = async (req, res) => {
 };
 
 
-// 💳 RESPUESTA 3D
+// 💳 RESPUESTA DEL 3D SECURE
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
 
-    const {
-      Status,
-      CONTROL_NUMBER,
-      ECI,
-      CAVV,
-      XID
-    } = data;
+    const { Status, CONTROL_NUMBER, ECI, CAVV, XID } = data;
 
-    // ❌ autenticación fallida
     if (Status !== "200") {
       deleteOrder(CONTROL_NUMBER);
-      return res.send("<h1>Autenticación rechazada ❌</h1>");
+      return res.send("<h1>Autenticación rechazada</h1>");
     }
 
     const order = getOrder(CONTROL_NUMBER);
+    if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
-    if (!order) {
-      return res.send("<h1>Orden no encontrada ❌</h1>");
-    }
-
-    // 🔥 pago final
     const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
@@ -90,12 +80,10 @@ export const handle3DSecureResponse = async (req, res) => {
       CMD_TRANS: "VENTA",
       AMOUNT: order.amount,
       CARD_NUMBER: order.cardNumber,
-      CARD_EXP: order.cardExp.replace("/", ""), // MMAA
+      CARD_EXP: order.cardExp.replace("/", ""),
       SECURITY_CODE: order.cvv,
       ENTRY_MODE: "MANUAL",
       MODE: "AUT",
-
-      // 🔐 variables 3D
       ECI,
       CAVV,
       XID
@@ -114,12 +102,12 @@ export const handle3DSecureResponse = async (req, res) => {
     deleteOrder(CONTROL_NUMBER);
 
     res.send(`
-      <h1>Pago procesado ✅</h1>
+      <h1>Pago procesado</h1>
       <pre>${JSON.stringify(response.data, null, 2)}</pre>
     `);
 
   } catch (error) {
     console.error("Error pago:", error.response?.data || error.message);
-    res.send("<h1>Error en pago ❌</h1>");
+    res.send("<h1>Error en pago</h1>");
   }
 };
