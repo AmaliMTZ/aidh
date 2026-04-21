@@ -19,56 +19,21 @@ body {
   background: #fff;
   padding: 25px;
   border-radius: 15px;
-  width: 300px; /* 🔥 más compacto */
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-h2 {
-  text-align: center;
-  margin-bottom: 15px;
+  width: 300px;
 }
 
 input {
   width: 100%;
-  padding: 10px; /* 🔥 más chico */
+  padding: 10px;
   margin: 6px 0;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-}
-
-input:focus {
-  border-color: #7b1fa2;
-  box-shadow: 0 0 4px rgba(123,31,162,0.4);
-  outline: none;
 }
 
 button {
   width: 100%;
   padding: 10px;
-  margin-top: 10px;
   background: #7b1fa2;
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #4a0072;
-}
-
-.toggle {
-  font-size: 12px;
-  cursor: pointer;
-  text-align: right;
-  color: #7b1fa2;
-}
-
-#resultado {
-  text-align: center;
-  margin-top: 10px;
 }
 </style>
 </head>
@@ -78,74 +43,35 @@ button:hover {
 <div class="container">
   <h2>Pago seguro</h2>
 
+  <!-- 🔥 SIN action NI method -->
   <form id="formPago">
 
-    <input name="nombre" placeholder="Nombre completo" required>
-    <input name="correo" placeholder="Correo electrónico" required>
+    <input name="nombre" placeholder="Nombre" required>
+    <input name="correo" placeholder="Correo" required>
 
-    <input id="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
-
+    <input id="cardNumber" placeholder="Tarjeta" required maxlength="16">
     <input id="cardExp" placeholder="MM/AA" required>
-
-    <input id="cvv" type="password" placeholder="CVV" maxlength="3" required>
-    <div class="toggle" onclick="toggleCVV()">👁 Mostrar CVV</div>
-
+    <input id="cvv" type="password" placeholder="CVV" required maxlength="3">
     <input id="amount" placeholder="Monto" required>
 
+    <!-- 🔥 MUY IMPORTANTE -->
     <button type="submit">Pagar</button>
 
   </form>
-
-  <p id="resultado"></p>
 </div>
 
 <script>
-const cardNumber = document.getElementById("cardNumber");
-const cvv = document.getElementById("cvv");
-const exp = document.getElementById("cardExp");
+const form = document.getElementById("formPago");
 
-// 🔒 Solo números tarjeta
-cardNumber.addEventListener("input", () => {
-  cardNumber.value = cardNumber.value.replace(/\D/g, "");
-});
-
-// 🔒 Solo números CVV
-cvv.addEventListener("input", () => {
-  cvv.value = cvv.value.replace(/\D/g, "");
-});
-
-// 🔒 Formato MM/AA
-exp.addEventListener("input", (e) => {
-  let v = e.target.value.replace(/\D/g, "");
-  if (v.length >= 3) {
-    v = v.substring(0,2) + "/" + v.substring(2,4);
-  }
-  e.target.value = v;
-});
-
-// 👁 Mostrar/ocultar CVV
-function toggleCVV() {
-  cvv.type = cvv.type === "password" ? "text" : "password";
-}
-
-// 🚀 Enviar
-document.getElementById("formPago").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  if (cardNumber.value.length !== 16) {
-    alert("La tarjeta debe tener 16 dígitos");
-    return;
-  }
-
-  if (cvv.value.length !== 3) {
-    alert("CVV inválido");
-    return;
-  }
+form.addEventListener("submit", async (e) => {
+  e.preventDefault(); // 🔥 CLAVE: evita GET
 
   const data = {
-    cardNumber: cardNumber.value,
-    cardExp: exp.value.replace("/", ""),
-    cvv: cvv.value,
+    nombre: form.nombre.value,
+    correo: form.correo.value,
+    cardNumber: document.getElementById("cardNumber").value,
+    cardExp: document.getElementById("cardExp").value.replace("/", ""),
+    cvv: document.getElementById("cvv").value,
     amount: document.getElementById("amount").value
   };
 
@@ -160,12 +86,13 @@ document.getElementById("formPago").addEventListener("submit", async (e) => {
 
     const html = await res.text();
 
+    // 🔥 ESTO MUESTRA BANORTE
     document.open();
     document.write(html);
     document.close();
 
-  } catch {
-    document.getElementById("resultado").innerText = "Error de conexión";
+  } catch (error) {
+    alert("Error al procesar pago");
   }
 });
 </script>
