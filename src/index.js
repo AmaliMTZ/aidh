@@ -12,39 +12,38 @@ dotenv.config();
 
 const app = express();
 
-// 🔐 SEGURIDAD
+// SEGURIDAD
 app.use(helmet());
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 100 // límite de requests
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
-
 app.use(limiter);
 
-// 🔄 MIDDLEWARES
+// MIDDLEWARES
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-// 📂 SERVIR FRONTEND
+// SERVIR FRONTEND
 app.use(express.static("public"));
 
-// 🔥 RUTA PRINCIPAL (IMPORTANTE)
+// RUTA PRINCIPAL
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/index.html");
 });
 
-// 📌 RUTAS API
+//  RUTAS API
 app.use("/api/payment", paymentRoute);
 
-// 🧪 RUTA DE PRUEBA
+//  TEST
 app.get("/test", (req, res) => {
-  res.send("Servidor funcionando correctamente ✅");
+  res.send("Servidor funcionando ");
 });
 
-// 🚀 INICIAR SERVIDOR
+//  SERVER
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });

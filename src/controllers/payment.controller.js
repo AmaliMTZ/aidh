@@ -2,7 +2,7 @@ import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 
-// 🔐 INICIO 3D
+//  3D Secure
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, cvv, amount } = req.body;
@@ -38,15 +38,16 @@ export const start3DSecure = async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
+    // 🔥 CLAVE: enviar HTML directo
     res.send(response.data);
 
   } catch (error) {
     console.error(error);
-    res.status(500).send("Error 3D Secure");
+    res.status(500).send("Error en 3D Secure");
   }
 };
 
-// 💳 RESPUESTA
+// 💳 respuesta 3D
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
@@ -55,7 +56,7 @@ export const handle3DSecureResponse = async (req, res) => {
 
     if (Status !== "200") {
       deleteOrder(CONTROL_NUMBER);
-      return res.send("<h1>Pago rechazado</h1>");
+      return res.send("<h1>Autenticación rechazada</h1>");
     }
 
     const order = getOrder(CONTROL_NUMBER);
