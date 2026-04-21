@@ -70,20 +70,21 @@ button:hover {
 <div class="container">
   <h2>Pago Seguro</h2>
 
-  <form id="formPago">
+  <!-- 🔥 AHORA EN POST -->
+  <form id="formPago" method="POST" action="/api/payment/3d-secure">
 
     <input name="nombre" placeholder="Nombre completo" required>
     <input name="correo" type="email" placeholder="Correo electrónico" required>
 
-    <input id="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
-    <input id="cardExp" placeholder="MM/AA" maxlength="5" required>
+    <input id="cardNumber" name="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
+    <input id="cardExp" name="cardExp" placeholder="MM/AA" maxlength="5" required>
 
     <div class="cvv-container">
-      <input id="cvv" type="password" placeholder="CVV" maxlength="4" required>
+      <input id="cvv" name="cvv" type="password" placeholder="CVV" maxlength="4" required>
       <span class="toggle-cvv" onclick="toggleCVV()">Ver</span>
     </div>
 
-    <input id="amount" placeholder="Monto" required>
+    <input id="amount" name="amount" placeholder="Monto" required>
 
     <button type="submit">Pagar</button>
 
@@ -91,12 +92,13 @@ button:hover {
 </div>
 
 <script>
+// 👁️ Mostrar CVV
 function toggleCVV() {
   const cvv = document.getElementById("cvv");
   cvv.type = cvv.type === "password" ? "text" : "password";
 }
 
-// formato MM/AA automático
+// formato MM/AA
 document.getElementById("cardExp").addEventListener("input", e => {
   let val = e.target.value.replace(/\D/g, "");
   if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);
@@ -108,19 +110,20 @@ document.getElementById("cardNumber").addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,16);
 });
 
+// 🔥 INTERCEPTAR POST
 window.onload = () => {
   const form = document.getElementById("formPago");
 
-  form.onsubmit = async (e) => {
-    e.preventDefault();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault(); // 🔥 evita GET
 
     const data = {
       nombre: form.nombre.value,
       correo: form.correo.value,
-      cardNumber: document.getElementById("cardNumber").value,
-      cardExp: document.getElementById("cardExp").value,
-      cvv: document.getElementById("cvv").value,
-      amount: document.getElementById("amount").value
+      cardNumber: form.cardNumber.value,
+      cardExp: form.cardExp.value,
+      cvv: form.cvv.value,
+      amount: form.amount.value
     };
 
     try {
@@ -133,14 +136,16 @@ window.onload = () => {
       });
 
       const html = await res.text();
+
       document.open();
       document.write(html);
       document.close();
 
     } catch (error) {
       alert("Error al procesar pago");
+      console.error(error);
     }
-  };
+  });
 };
 </script>
 
