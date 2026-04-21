@@ -1,21 +1,36 @@
 const orders = new Map();
 
-// Crear orden
+//  Crear orden
 export const createOrder = (controlNumber, data) => {
-  orders.set(controlNumber, data);
+  if (!controlNumber || !data) return;
 
-  // 🔥 auto borrar en 5 min
+  orders.set(controlNumber, {
+    ...data,
+    createdAt: Date.now()
+  });
+
+  //  auto eliminar en 5 minutos
   setTimeout(() => {
     orders.delete(controlNumber);
   }, 5 * 60 * 1000);
 };
 
-// Obtener orden
+
+//  Obtener orden
 export const getOrder = (controlNumber) => {
-  return orders.get(controlNumber);
+  if (!controlNumber) return null;
+
+  const order = orders.get(controlNumber);
+
+  if (!order) return null;
+
+  return order;
 };
 
-// Eliminar orden
+
+//  Eliminar orden
 export const deleteOrder = (controlNumber) => {
+  if (!controlNumber) return;
+
   orders.delete(controlNumber);
 };

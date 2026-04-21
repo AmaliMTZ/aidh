@@ -6,10 +6,12 @@ import {
 
 const router = Router();
 
+// Inicio 3D Secure
 router.post("/3d-secure", start3DSecure);
 
-// aceptar GET y POST (IMPORTANTE)
-router.post("/3d-response", handle3DSecureResponse);
-router.get("/3d-response", handle3DSecureResponse);
+// Banorte puede regresar por POST o GET
+router.route("/3d-response")
+  .post(handle3DSecureResponse)
+  .get(handle3DSecureResponse);
 
 export default router;

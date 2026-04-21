@@ -12,8 +12,12 @@ dotenv.config();
 
 const app = express();
 
-// SEGURIDAD
-app.use(helmet());
+// SEGURIDAD (FIX BANORTE)
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -35,15 +39,15 @@ app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/index.html");
 });
 
-//  RUTAS API
+// RUTAS API
 app.use("/api/payment", paymentRoute);
 
-//  TEST
+// TEST
 app.get("/test", (req, res) => {
   res.send("Servidor funcionando ");
 });
 
-//  SERVER
+// SERVER
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });

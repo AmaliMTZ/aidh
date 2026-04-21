@@ -70,21 +70,51 @@ button:hover {
 <div class="container">
   <h2>Pago Seguro</h2>
 
-  <!-- 🔥 FORM NORMAL (CLAVE) -->
+  <!-- 🔥 FORM 100% CORRECTO -->
   <form method="POST" action="/api/payment/3d-secure">
 
     <input name="nombre" placeholder="Nombre completo" required>
     <input name="correo" type="email" placeholder="Correo electrónico" required>
 
-    <input name="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
-    <input name="cardExp" placeholder="MM/AA" maxlength="5" required>
+    <!-- 🔥 SOLO NÚMEROS + 16 DIGITOS -->
+    <input 
+      name="cardNumber" 
+      placeholder="Número de tarjeta" 
+      maxlength="16" 
+      pattern="\d{16}" 
+      inputmode="numeric"
+      required
+    >
+
+    <!-- 🔥 FORMATO CORRECTO -->
+    <input 
+      name="cardExp" 
+      placeholder="MM/AA" 
+      maxlength="5" 
+      pattern="\d{2}/\d{2}"
+      required
+    >
 
     <div class="cvv-container">
-      <input id="cvv" name="cvv" type="password" placeholder="CVV" maxlength="4" required>
+      <input 
+        id="cvv" 
+        name="cvv" 
+        type="password" 
+        placeholder="CVV" 
+        maxlength="4" 
+        pattern="\d{3,4}"
+        required
+      >
       <span class="toggle-cvv" onclick="toggleCVV()">Ver</span>
     </div>
 
-    <input name="amount" placeholder="Monto" required>
+    <input 
+      name="amount" 
+      placeholder="Monto" 
+      type="number"
+      step="0.01"
+      required
+    >
 
     <button type="submit">Pagar</button>
 
