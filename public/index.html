@@ -42,15 +42,20 @@ button {
 <div class="container">
   <h3>Pago</h3>
 
-  <!-- 🔥 SIN action -->
   <form id="formPago">
 
     <input name="nombre" placeholder="Nombre" required>
     <input name="correo" placeholder="Correo" required>
 
-    <input id="cardNumber" placeholder="Tarjeta" required>
-    <input id="cardExp" placeholder="MM/AA" required>
-    <input id="cvv" type="password" placeholder="CVV" required>
+    <!--  tarjeta limitada -->
+    <input id="cardNumber" placeholder="Tarjeta" maxlength="16" required>
+
+    <!--  mantiene / -->
+    <input id="cardExp" placeholder="MM/AA" maxlength="5" required>
+
+    <!-- oculto -->
+    <input id="cvv" type="password" placeholder="CVV" maxlength="3" required>
+
     <input id="amount" placeholder="Monto" required>
 
     <button type="submit">Pagar</button>
@@ -63,20 +68,40 @@ window.onload = () => {
 
   const form = document.getElementById("formPago");
 
-  if (!form) {
-    alert("Formulario no encontrado");
-    return;
-  }
+  // formato MM/AA automático
+  const expInput = document.getElementById("cardExp");
+
+  expInput.addEventListener("input", (e) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length >= 3) {
+      val = val.slice(0,2) + "/" + val.slice(2,4);
+    }
+    e.target.value = val;
+  });
 
   form.onsubmit = async (e) => {
-    e.preventDefault(); // 🔥 CLAVE
+    e.preventDefault();
+
+    const cardNumber = document.getElementById("cardNumber").value;
+    const cvv = document.getElementById("cvv").value;
+
+    // validaciones frontend
+    if (cardNumber.length !== 16) {
+      alert("La tarjeta debe tener 16 dígitos");
+      return;
+    }
+
+    if (cvv.length !== 3) {
+      alert("CVV inválido");
+      return;
+    }
 
     const data = {
       nombre: form.nombre.value,
       correo: form.correo.value,
-      cardNumber: document.getElementById("cardNumber").value,
+      cardNumber,
       cardExp: document.getElementById("cardExp").value.replace("/", ""),
-      cvv: document.getElementById("cvv").value,
+      cvv,
       amount: document.getElementById("amount").value
     };
 
@@ -91,9 +116,11 @@ window.onload = () => {
 
       const html = await res.text();
 
-      document.open();
-      document.write(html);
-      document.close();
+      // CORRECTO para Banorte
+      const newWindow = window.open();
+      newWindow.document.open();
+      newWindow.document.write(html);
+      newWindow.document.close();
 
     } catch (error) {
       alert("Error al procesar pago");

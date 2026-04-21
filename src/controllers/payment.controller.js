@@ -42,11 +42,16 @@ export const start3DSecure = async (req, res) => {
       "3D_CERTIFICATION": "03"
     });
 
+    console.log("Datos recibidos:", req.body);
+console.log("Entrando a Banorte...");
+
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
       data,
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
+
+    console.log("Respuesta Banorte:", response.data);
 
     res.send(response.data);
 
