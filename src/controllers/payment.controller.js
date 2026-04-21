@@ -2,38 +2,28 @@ import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 
-//  1. INICIAR 3D SECURE
+// 🔐 INICIO 3D
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, cvv, amount } = req.body;
 
-    //  VALIDACIONES
-    if (!cardNumber || cardNumber.length !== 16) {
+    if (!cardNumber || cardNumber.length !== 16)
       return res.status(400).send("Tarjeta inválida");
-    }
-
-    if (!cvv || cvv.length !== 3) {
-      return res.status(400).send("CVV inválido");
-    }
-
-    if (!amount) {
-      return res.status(400).send("Monto requerido");
-    }
 
     const controlNumber = "ORD" + Date.now();
 
-    // guardar temporalmente
-    createOrder(controlNumber, {
-      cardNumber,
-      cardExp,
-      cvv,
-      amount
-    });
+    const cardType =
+      cardNumber.startsWith("4") ? "VISA" :
+      cardNumber.startsWith("5") ? "MC" :
+      "AMEX";
+
+    createOrder(controlNumber, { cardNumber, cardExp, cvv, amount });
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
       AMOUNT: amount,
+      CARD_TYPE: cardType,
       MERCHANT_ID,
       MERCHANT_NAME: "MiTienda",
       MERCHANT_CITY: "CDMX",
@@ -42,47 +32,35 @@ export const start3DSecure = async (req, res) => {
       "3D_CERTIFICATION": "03"
     });
 
-    console.log("Datos recibidos:", req.body);
-console.log("Entrando a Banorte...");
-
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
       data,
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    console.log("Respuesta Banorte:", response.data);
-
     res.send(response.data);
 
   } catch (error) {
-    console.error("Error 3D:", error.message);
-    res.status(500).send("Error iniciando 3D Secure");
+    console.error(error);
+    res.status(500).send("Error 3D Secure");
   }
 };
 
-//  2. RESPUESTA BANORTE
+// 💳 RESPUESTA
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
 
-    const {
-      Status,
-      CONTROL_NUMBER
-    } = data;
+    const { Status, CONTROL_NUMBER, ECI, CAVV, XID } = data;
 
     if (Status !== "200") {
       deleteOrder(CONTROL_NUMBER);
-      return res.send(" Autenticación rechazada");
+      return res.send("<h1>Pago rechazado</h1>");
     }
 
     const order = getOrder(CONTROL_NUMBER);
+    if (!order) return res.send("Orden no encontrada");
 
-    if (!order) {
-      return res.send("Orden no encontrada");
-    }
-
-    // CONFIRMAR PAGO
     const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
@@ -91,10 +69,13 @@ export const handle3DSecureResponse = async (req, res) => {
       CMD_TRANS: "VENTA",
       AMOUNT: order.amount,
       CARD_NUMBER: order.cardNumber,
-      CARD_EXP: order.cardExp,
+      CARD_EXP: order.cardExp.replace("/", ""),
       SECURITY_CODE: order.cvv,
       ENTRY_MODE: "MANUAL",
-      MODE: "AUT"
+      MODE: "AUT",
+      ECI,
+      CAVV,
+      XID
     });
 
     const response = await axios.post(
@@ -103,16 +84,15 @@ export const handle3DSecureResponse = async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    // eliminar datos sensibles
     deleteOrder(CONTROL_NUMBER);
 
     res.send(`
       <h1>Pago procesado</h1>
-      <p>Estatus: ${response.data?.response || "OK"}</p>
+      <pre>${JSON.stringify(response.data, null, 2)}</pre>
     `);
 
   } catch (error) {
-    console.error("Error pago:", error.message);
-    res.send("Error al confirmar pago");
+    console.error(error);
+    res.send("Error en pago");
   }
 };

