@@ -57,7 +57,7 @@ export const start3DSecure = async (req, res) => {
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
-
+    console.log("3D RESPONSE:", data);
     const { Status, CONTROL_NUMBER, ECI, CAVV, XID } = data;
 
     if (Status !== "200") {
