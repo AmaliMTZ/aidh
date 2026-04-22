@@ -14,4 +14,6 @@ router.route("/3d-response")
   .post(handle3DSecureResponse)
   .get(handle3DSecureResponse);
 
+  router.post("/receipt", generateReceipt);
+  
 export default router;

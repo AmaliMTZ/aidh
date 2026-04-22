@@ -1,8 +1,9 @@
 import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
+import { generateReceiptPDF } from "../services/receipt.service.js";
 
-//  INICIO 3D SECURE
+// INICIO 3D SECURE
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, cvv, amount } = req.body;
@@ -20,17 +21,14 @@ export const start3DSecure = async (req, res) => {
 
     createOrder(controlNumber, { cardNumber, cardExp, cvv, amount });
 
-    // DEBUG (puedes quitarlo después)
-    console.log("BASE_URL:", BASE_URL);
-
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp, // MM/AA
       AMOUNT: amount,
       CARD_TYPE: cardType,
       MERCHANT_ID,
-      MERCHANT_NAME: "MiTienda",
-      MERCHANT_CITY: "CDMX",
+      MERCHANT_NAME: "AIDH",
+      MERCHANT_CITY: "Coahuila",
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       CONTROL_NUMBER: controlNumber,
       REFERENCIA3D: controlNumber,
@@ -47,7 +45,6 @@ export const start3DSecure = async (req, res) => {
       }
     );
 
-    //  CLAVE: enviar HTML puro
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(response.data);
 
@@ -58,7 +55,7 @@ export const start3DSecure = async (req, res) => {
 };
 
 
-//  RESPUESTA DEL 3D SECURE
+// RESPUESTA DEL 3D SECURE + PAGO + COMPROBANTE
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
@@ -102,13 +99,66 @@ export const handle3DSecureResponse = async (req, res) => {
 
     deleteOrder(CONTROL_NUMBER);
 
+    const result = response.data;
+
+    // PAGO APROBADO
+    if (result.PAYW_RESULT === "A") {
+
+      const authCode = result.AUTH_CODE || "N/A";
+      const reference = result.REFERENCE || "N/A";
+
+      return res.send(`
+        <html>
+        <head>
+          <title>Comprobante</title>
+          <style>
+            body { font-family: Arial; background:#f4f4f4; text-align:center; }
+            .box { background:white; padding:25px; margin:50px auto; width:320px; border-radius:10px; }
+            button { padding:10px; background:#6a1b9a; color:white; border:none; border-radius:5px; }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h2>Pago aprobado</h2>
+            <p><b>Orden:</b> ${CONTROL_NUMBER}</p>
+            <p><b>Monto:</b> $${order.amount}</p>
+            <p><b>Autorización:</b> ${authCode}</p>
+            <p><b>Referencia:</b> ${reference}</p>
+
+            <form method="POST" action="/api/payment/receipt">
+              <input type="hidden" name="controlNumber" value="${CONTROL_NUMBER}">
+              <input type="hidden" name="amount" value="${order.amount}">
+              <input type="hidden" name="authCode" value="${authCode}">
+              <input type="hidden" name="reference" value="${reference}">
+              <button type="submit">Descargar PDF</button>
+            </form>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // PAGO RECHAZADO
     res.send(`
-      <h1>Pago procesado</h1>
-      <pre>${JSON.stringify(response.data, null, 2)}</pre>
+      <h1>Pago rechazado</h1>
+      <pre>${JSON.stringify(result, null, 2)}</pre>
     `);
 
   } catch (error) {
     console.error("Error pago:", error.response?.data || error.message);
     res.send("<h1>Error en pago</h1>");
   }
+};
+
+
+// GENERAR PDF
+export const generateReceipt = (req, res) => {
+  const { controlNumber, amount, authCode, reference } = req.body;
+
+  generateReceiptPDF(res, {
+    controlNumber,
+    amount,
+    authCode,
+    reference
+  });
 };
