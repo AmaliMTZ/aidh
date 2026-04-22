@@ -23,7 +23,7 @@ export const start3DSecure = async (req, res) => {
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
-      CARD_EXP: cardExp, // MM/AA
+      CARD_EXP: cardExp.replace("/",""), // MM/AA
       AMOUNT: amount,
       CARD_TYPE: cardType,
       MERCHANT_ID,
