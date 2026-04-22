@@ -2,7 +2,7 @@ import axios from "axios";
 import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 
-// 🔐 INICIO 3D SECURE
+//  INICIO 3D SECURE
 export const start3DSecure = async (req, res) => {
   try {
     const { cardNumber, cardExp, cvv, amount } = req.body;
@@ -33,6 +33,7 @@ export const start3DSecure = async (req, res) => {
       MERCHANT_CITY: "CDMX",
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       CONTROL_NUMBER: controlNumber,
+      REFERENCIA3D: controlNumber,
       "3D_CERTIFICATION": "03"
     });
 
@@ -46,7 +47,7 @@ export const start3DSecure = async (req, res) => {
       }
     );
 
-    // 🔥 CLAVE: enviar HTML puro
+    //  CLAVE: enviar HTML puro
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(response.data);
 
@@ -57,7 +58,7 @@ export const start3DSecure = async (req, res) => {
 };
 
 
-// 💳 RESPUESTA DEL 3D SECURE
+//  RESPUESTA DEL 3D SECURE
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;

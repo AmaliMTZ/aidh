@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <title>Pago Seguro</title>
 
+<!-- eguridad básica navegador -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+<meta name="referrer" content="no-referrer">
+
 <style>
 body {
   margin: 0;
@@ -19,7 +24,7 @@ body {
   background: white;
   padding: 30px;
   border-radius: 15px;
-  width: 320px;
+  width: 340px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
@@ -70,27 +75,25 @@ button:hover {
 <div class="container">
   <h2>Pago Seguro</h2>
 
-  <!-- 🔥 FORM 100% CORRECTO -->
-  <form method="POST" action="/api/payment/3d-secure">
+  <!-- IMPORTANTE: POST directo -->
+  <form method="POST" action="/api/payment/3d-secure" autocomplete="off">
 
     <input name="nombre" placeholder="Nombre completo" required>
     <input name="correo" type="email" placeholder="Correo electrónico" required>
 
-    <!-- 🔥 SOLO NÚMEROS + 16 DIGITOS -->
     <input 
       name="cardNumber" 
       placeholder="Número de tarjeta" 
-      maxlength="16" 
+      maxlength="16"
       pattern="\d{16}" 
       inputmode="numeric"
       required
     >
 
-    <!-- 🔥 FORMATO CORRECTO -->
     <input 
       name="cardExp" 
       placeholder="MM/AA" 
-      maxlength="5" 
+      maxlength="5"
       pattern="\d{2}/\d{2}"
       required
     >
@@ -101,7 +104,7 @@ button:hover {
         name="cvv" 
         type="password" 
         placeholder="CVV" 
-        maxlength="4" 
+        maxlength="4"
         pattern="\d{3,4}"
         required
       >
@@ -110,9 +113,10 @@ button:hover {
 
     <input 
       name="amount" 
-      placeholder="Monto" 
       type="number"
+      min="1"
       step="0.01"
+      placeholder="Monto"
       required
     >
 
@@ -122,13 +126,12 @@ button:hover {
 </div>
 
 <script>
-// 👁️ mostrar CVV
 function toggleCVV() {
   const cvv = document.getElementById("cvv");
   cvv.type = cvv.type === "password" ? "text" : "password";
 }
 
-// formato MM/AA automático
+// formato MM/AA
 document.querySelector('[name="cardExp"]').addEventListener("input", e => {
   let val = e.target.value.replace(/\D/g, "");
   if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);

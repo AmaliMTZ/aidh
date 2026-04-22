@@ -12,42 +12,45 @@ dotenv.config();
 
 const app = express();
 
-// SEGURIDAD (FIX BANORTE)
+// CONFIGURACIÓN SEGURA
 app.use(
   helmet({
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
   })
 );
+
+// headers extra (evita advertencias navegador)
+app.use((req, res, next) => {
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  next();
+});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
 });
+
 app.use(limiter);
 
-// MIDDLEWARES
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-// SERVIR FRONTEND
 app.use(express.static("public"));
 
-// RUTA PRINCIPAL
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/public/index.html");
 });
 
-// RUTAS API
 app.use("/api/payment", paymentRoute);
 
-// TEST
 app.get("/test", (req, res) => {
-  res.send("Servidor funcionando ");
+  res.send("Servidor funcionando");
 });
 
-// SERVER
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
