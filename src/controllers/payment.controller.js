@@ -23,15 +23,13 @@ export const start3DSecure = async (req, res) => {
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
-      CARD_EXP: cardExp.replace("/",""), // MM/AA
-      AMOUNT: amount,
+      CARD_EXP: cardExp, // MM/AA
+      AMOUNT: Number(amount).toFixed(2),
       CARD_TYPE: cardType,
       MERCHANT_ID,
       MERCHANT_NAME: "AIDH",
       MERCHANT_CITY: "Coahuila",
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
-      CONTROL_NUMBER: controlNumber,
-      REFERENCIA3D: controlNumber,
       "3D_CERTIFICATION": "03"
     });
 
