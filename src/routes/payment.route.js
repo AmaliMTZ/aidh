@@ -1,7 +1,8 @@
 import { Router } from "express";
 import {
   start3DSecure,
-  handle3DSecureResponse
+  handle3DSecureResponse,
+  generateReceipt
 } from "../controllers/payment.controller.js";
 
 const router = Router();
@@ -15,5 +16,5 @@ router.route("/3d-response")
   .get(handle3DSecureResponse);
 
   router.post("/receipt", generateReceipt);
-  
+
 export default router;
