@@ -12,12 +12,15 @@ export const generateReceiptPDF = (res, data) => {
   doc.fontSize(18).text("COMPROBANTE DE PAGO", { align: "center" });
   doc.moveDown();
 
-  // FECHA CORREGIDA A MÉXICO
-  const fecha = new Date().toLocaleString("es-MX", {
-    timeZone: "America/Mexico_City",
-    dateStyle: "short",
-    timeStyle: "medium"
-  });
+const now = new Date();
+
+// convertir a hora México (UTC -6)
+const fechaMexico = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+
+const fecha = fechaMexico.toLocaleString("es-MX", {
+  dateStyle: "short",
+  timeStyle: "medium"
+});
 
   // DATOS
   doc.fontSize(12);
