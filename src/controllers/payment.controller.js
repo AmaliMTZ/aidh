@@ -3,13 +3,20 @@ import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
 import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
 import { generateReceiptPDF } from "../services/receipt.service.js";
 
+// ===============================
 // INICIO 3D SECURE
+// ===============================
 export const start3DSecure = async (req, res) => {
   try {
-    const { cardNumber, cardExp, cvv, amount } = req.body;
+    const { cardNumber, cardExp, cvv, amount, nombre, correo } = req.body;
 
+    // Validaciones básicas
     if (!cardNumber || cardNumber.length !== 16) {
       return res.status(400).send("Tarjeta inválida");
+    }
+
+    if (!nombre || !correo) {
+      return res.status(400).send("Faltan datos del cliente");
     }
 
     const controlNumber = "ORD" + Date.now();
@@ -19,19 +26,35 @@ export const start3DSecure = async (req, res) => {
       cardNumber.startsWith("5") ? "MC" :
       "AMEX";
 
-    createOrder(controlNumber, { cardNumber, cardExp, cvv, amount });
+    // Guardar orden temporal
+    createOrder(controlNumber, {
+      cardNumber,
+      cardExp,
+      cvv,
+      amount
+    });
 
     const data = new URLSearchParams({
+      CONTROL_NUMBER: controlNumber, // 🔥 CLAVE
       CARD_NUMBER: cardNumber,
-      CARD_EXP: cardExp, // MM/AA
+      CARD_EXP: cardExp.replace("/", ""), // 🔥 formato correcto
+      CVV2: cvv,
       AMOUNT: Number(amount).toFixed(2),
       CARD_TYPE: cardType,
+
       MERCHANT_ID,
       MERCHANT_NAME: "AIDH",
       MERCHANT_CITY: "Coahuila",
+
+      CUSTOMER_NAME: nombre,
+      CUSTOMER_EMAIL: correo,
+
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       "3D_CERTIFICATION": "03"
     });
+
+    console.log("==== REQUEST 3D ====");
+    console.log(data.toString());
 
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
@@ -53,21 +76,33 @@ export const start3DSecure = async (req, res) => {
 };
 
 
-// RESPUESTA DEL 3D SECURE + PAGO + COMPROBANTE
+// ===============================
+// RESPUESTA DEL 3D SECURE
+// ===============================
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.method === "POST" ? req.body : req.query;
-    console.log("3D RESPONSE:", data);
+
+    console.log("==== 3D RESPONSE ====");
+    console.log(data);
+
     const { Status, CONTROL_NUMBER, ECI, CAVV, XID } = data;
 
+    // Si falla autenticación
     if (Status !== "200") {
       deleteOrder(CONTROL_NUMBER);
       return res.send("<h1>Autenticación rechazada</h1>");
     }
 
     const order = getOrder(CONTROL_NUMBER);
-    if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
+    if (!order) {
+      return res.send("<h1>Orden no encontrada</h1>");
+    }
+
+    // ===============================
+    // HACER EL COBRO
+    // ===============================
     const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
@@ -85,6 +120,9 @@ export const handle3DSecureResponse = async (req, res) => {
       XID
     });
 
+    console.log("==== REQUEST PAGO ====");
+    console.log(payload.toString());
+
     const response = await axios.post(
       "https://via.pagosbanorte.com/payw2",
       payload.toString(),
@@ -99,7 +137,12 @@ export const handle3DSecureResponse = async (req, res) => {
 
     const result = response.data;
 
+    console.log("==== RESPUESTA BANCO ====");
+    console.log(result);
+
+    // ===============================
     // PAGO APROBADO
+    // ===============================
     if (result.PAYW_RESULT === "A") {
 
       const authCode = result.AUTH_CODE || "N/A";
@@ -136,8 +179,10 @@ export const handle3DSecureResponse = async (req, res) => {
       `);
     }
 
+    // ===============================
     // PAGO RECHAZADO
-    res.send(`
+    // ===============================
+    return res.send(`
       <h1>Pago rechazado</h1>
       <pre>${JSON.stringify(result, null, 2)}</pre>
     `);
@@ -149,7 +194,9 @@ export const handle3DSecureResponse = async (req, res) => {
 };
 
 
+// ===============================
 // GENERAR PDF
+// ===============================
 export const generateReceipt = (req, res) => {
   const { controlNumber, amount, authCode, reference } = req.body;
 
