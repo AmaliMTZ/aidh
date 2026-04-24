@@ -160,7 +160,7 @@ export const handle3DSecureResponse = async (req, res) => {
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
-      AMOUNT: order.amount,
+      AMOUNT: Number(order.amount).toFixed(2),
       CARD_NUMBER: order.cardNumber,
       CARD_EXP: order.cardExp.replace("/", ""),
       SECURITY_CODE: order.cvv,
