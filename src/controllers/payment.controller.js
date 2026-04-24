@@ -191,7 +191,8 @@ export const handle3DSecureResponse = async (req, res) => {
 
     deleteOrder(REFERENCE3D);
 
-    const result = response.data;
+    const raw = response.data;
+const result = Object.fromEntries(new URLSearchParams(raw));
 
     console.log("==== RESPUESTA BANCO ====");
     console.log(result);
