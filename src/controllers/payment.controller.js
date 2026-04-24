@@ -35,9 +35,7 @@ export const start3DSecure = async (req, res) => {
       tipoTarjeta
     } = req.body;
 
-    // ===============================
     // VALIDACIONES
-    // ===============================
     if (!/^\d{15,16}$/.test(cardNumber)) {
       return res.status(400).send("Tarjeta inválida");
     }
@@ -60,11 +58,9 @@ export const start3DSecure = async (req, res) => {
       cardNumber.startsWith("5") ? "MC" :
       "AMEX";
 
-    // separar nombre
     const [firstName, ...rest] = nombre.split(" ");
     const lastName = rest.join(" ") || "NA";
 
-    // guardar orden temporal
     createOrder(reference3D, {
       cardNumber,
       cardExp,
@@ -72,28 +68,21 @@ export const start3DSecure = async (req, res) => {
       amount
     });
 
-    // ===============================
-    // REQUEST 3D SECURE
-    // ===============================
     const data = new URLSearchParams({
-      // TARJETA
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
       AMOUNT: Number(amount).toFixed(2),
       CARD_TYPE: cardType,
 
-      // COMERCIO
       MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
       MERCHANT_CITY: "Saltillo",
 
-      // 3D SECURE
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       REFERENCE3D: reference3D,
       "3D_CERTIFICATION": "03",
       THREED_VERSION: "2",
 
-      //  DATOS DEL CLIENTE (REALES)
       NAME: firstName,
       LAST_NAME: lastName,
       EMAIL: correo,
@@ -160,19 +149,21 @@ export const handle3DSecureResponse = async (req, res) => {
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
+
       AMOUNT: Number(order.amount).toFixed(2),
+
       CARD_NUMBER: order.cardNumber,
       CARD_EXP: order.cardExp.replace("/", ""),
       SECURITY_CODE: order.cvv,
-      ENTRY_MODE: "01",
+
+      ENTRY_MODE: "MANUAL", // ✔ correcto
       MODE: "AUT",
 
-      // 3D SECURE
+      // 🔥 SOLO ESTO DE 3D
       ECI,
       CAVV,
       XID,
-      STATUS_3D: Status,
-      VERSION_3D: "2",
+
       CONTROL_NUMBER: REFERENCE3D
     });
 
@@ -192,7 +183,7 @@ export const handle3DSecureResponse = async (req, res) => {
     deleteOrder(REFERENCE3D);
 
     const raw = response.data;
-const result = Object.fromEntries(new URLSearchParams(raw));
+    const result = Object.fromEntries(new URLSearchParams(raw));
 
     console.log("==== RESPUESTA BANCO ====");
     console.log(result);
