@@ -164,7 +164,7 @@ export const handle3DSecureResponse = async (req, res) => {
       CARD_NUMBER: order.cardNumber,
       CARD_EXP: order.cardExp.replace("/", ""),
       SECURITY_CODE: order.cvv,
-      ENTRY_MODE: "MANUAL",
+      ENTRY_MODE: "01",
       MODE: "AUT",
 
       // 3D SECURE
