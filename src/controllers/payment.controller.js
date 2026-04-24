@@ -84,7 +84,7 @@ export const start3DSecure = async (req, res) => {
 
       // COMERCIO
       MERCHANT_ID,
-      MERCHANT_NAME: "COMERCIO ELECTRONICO ACADEMIA IDH",
+      MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
       MERCHANT_CITY: "Saltillo",
 
       // 3D SECURE
@@ -93,7 +93,7 @@ export const start3DSecure = async (req, res) => {
       "3D_CERTIFICATION": "03",
       THREED_VERSION: "2",
 
-      // 🔥 DATOS DEL CLIENTE (REALES)
+      //  DATOS DEL CLIENTE (REALES)
       NAME: firstName,
       LAST_NAME: lastName,
       EMAIL: correo,
