@@ -1,58 +1,96 @@
 import express from "express";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import path from "path";
 
 import paymentRoute from "./routes/payment.route.js";
-import { PORT } from "./config.js";
-
-dotenv.config();
+import { PORT, BASE_URL } from "./config.js";
 
 const app = express();
 
+// ===============================
+// CONFIG PROXY (IMPORTANTE)
+// ===============================
 app.set("trust proxy", 1);
 
-// CONFIGURACIÓN SEGURA
+// ===============================
+// SEGURIDAD
+// ===============================
 app.use(
   helmet({
     contentSecurityPolicy: false,
   })
 );
 
-// headers extra (evita advertencias navegador)
+// headers extra
 app.use((req, res, next) => {
-  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   next();
 });
 
+// ===============================
+// RATE LIMIT
+// ===============================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100
+  max: 100,
 });
 
 app.use(limiter);
 
-app.use(cors());
+// ===============================
+// CORS (RESTRINGIDO)
+// ===============================
+app.use(
+  cors({
+    origin: BASE_URL, // importante para producción
+    methods: ["GET", "POST"],
+  })
+);
+
+// ===============================
+// PARSERS
+// ===============================
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// ===============================
+// LOGS
+// ===============================
 app.use(morgan("dev"));
 
-app.use(express.static("public"));
+// ===============================
+// ARCHIVOS ESTÁTICOS
+// ===============================
+const __dirname = process.cwd();
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
-  res.sendFile(process.cwd() + "/public/index.html");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// ===============================
+// RUTAS
+// ===============================
 app.use("/api/payment", paymentRoute);
 
+// ===============================
+// TEST
+// ===============================
 app.get("/test", (req, res) => {
   res.send("Servidor funcionando");
 });
 
+// ===============================
+// START SERVER
+// ===============================
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });

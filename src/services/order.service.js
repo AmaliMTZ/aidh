@@ -1,24 +1,36 @@
 const orders = new Map();
 
-export const createOrder = (controlNumber, data) => {
-  if (!controlNumber || !data) return;
+// ===============================
+// CREAR ORDEN
+// ===============================
+export const createOrder = (reference3D, data) => {
+  if (!reference3D || !data) return;
 
-  orders.set(controlNumber, {
+  orders.set(reference3D, {
     ...data,
     createdAt: Date.now()
   });
 
+  // eliminar en 5 minutos
   setTimeout(() => {
-    orders.delete(controlNumber);
+    orders.delete(reference3D);
   }, 5 * 60 * 1000);
 };
 
-export const getOrder = (controlNumber) => {
-  if (!controlNumber) return null;
-  return orders.get(controlNumber) || null;
+
+// ===============================
+// OBTENER ORDEN
+// ===============================
+export const getOrder = (reference3D) => {
+  if (!reference3D) return null;
+  return orders.get(reference3D) || null;
 };
 
-export const deleteOrder = (controlNumber) => {
-  if (!controlNumber) return;
-  orders.delete(controlNumber);
+
+// ===============================
+// ELIMINAR ORDEN
+// ===============================
+export const deleteOrder = (reference3D) => {
+  if (!reference3D) return;
+  orders.delete(reference3D);
 };

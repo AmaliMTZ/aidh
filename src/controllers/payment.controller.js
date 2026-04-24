@@ -1,17 +1,41 @@
 import axios from "axios";
-import { MERCHANT_ID, USER, PASSWORD, TERMINAL, BASE_URL } from "../config.js";
-import { createOrder, getOrder, deleteOrder } from "../services/order.service.js";
+import {
+  MERCHANT_ID,
+  USER,
+  PASSWORD,
+  TERMINAL,
+  BASE_URL
+} from "../config.js";
+
+import {
+  createOrder,
+  getOrder,
+  deleteOrder
+} from "../services/order.service.js";
+
 import { generateReceiptPDF } from "../services/receipt.service.js";
+
 
 // ===============================
 // INICIO 3D SECURE
 // ===============================
 export const start3DSecure = async (req, res) => {
   try {
-    const { cardNumber, cardExp, cvv, amount, nombre, correo } = req.body;
+    const {
+      cardNumber,
+      cardExp,
+      cvv,
+      amount,
+      nombre,
+      correo,
+      telefono,
+      direccion,
+      ciudad,
+      cp,
+      tipoTarjeta
+    } = req.body;
 
-    // Validaciones básicas
-    if (!cardNumber || cardNumber.length !== 16) {
+    if (!cardNumber || cardNumber.length < 15) {
       return res.status(400).send("Tarjeta inválida");
     }
 
@@ -19,15 +43,19 @@ export const start3DSecure = async (req, res) => {
       return res.status(400).send("Faltan datos del cliente");
     }
 
-    const controlNumber = "ORD" + Date.now();
+    const reference3D = "ORD" + Date.now();
 
     const cardType =
       cardNumber.startsWith("4") ? "VISA" :
       cardNumber.startsWith("5") ? "MC" :
       "AMEX";
 
-    // Guardar orden temporal
-    createOrder(controlNumber, {
+    // separar nombre
+    const [firstName, ...rest] = nombre.split(" ");
+    const lastName = rest.join(" ") || "NA";
+
+    // guardar orden temporal
+    createOrder(reference3D, {
       cardNumber,
       cardExp,
       cvv,
@@ -35,22 +63,33 @@ export const start3DSecure = async (req, res) => {
     });
 
     const data = new URLSearchParams({
-      CONTROL_NUMBER: controlNumber, // 🔥 CLAVE
+      // TARJETA
       CARD_NUMBER: cardNumber,
-      CARD_EXP: cardExp.replace("/", ""), // 🔥 formato correcto
-      CVV2: cvv,
+      CARD_EXP: cardExp,
       AMOUNT: Number(amount).toFixed(2),
       CARD_TYPE: cardType,
 
+      // COMERCIO
       MERCHANT_ID,
       MERCHANT_NAME: "AIDH",
-      MERCHANT_CITY: "Coahuila",
+      MERCHANT_CITY: "Saltillo",
 
-      CUSTOMER_NAME: nombre,
-      CUSTOMER_EMAIL: correo,
-
+      // 3D SECURE
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
-      "3D_CERTIFICATION": "03"
+      REFERENCE3D: reference3D,
+      "3D_CERTIFICATION": "03",
+      THREED_VERSION: "2",
+
+      // CLIENTE (OBLIGATORIOS)
+      NAME: firstName,
+      LAST_NAME: lastName,
+      EMAIL: correo,
+      CITY: ciudad || "Saltillo",
+      COUNTRY: "MX",
+      POSTAL_CODE: cp || "25000",
+      STREET: direccion || "NA",
+      MOBILE_PHONE: telefono || "8440000000",
+      CREDIT_TYPE: tipoTarjeta || "CR"
     });
 
     console.log("==== REQUEST 3D ====");
@@ -86,22 +125,21 @@ export const handle3DSecureResponse = async (req, res) => {
     console.log("==== 3D RESPONSE ====");
     console.log(data);
 
-    const { Status, CONTROL_NUMBER, ECI, CAVV, XID } = data;
+    const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
-    // Si falla autenticación
     if (Status !== "200") {
-      deleteOrder(CONTROL_NUMBER);
-      return res.send("<h1>Autenticación rechazada</h1>");
+      deleteOrder(REFERENCE3D);
+      return res.send(`<h1>Autenticación fallida (${Status})</h1>`);
     }
 
-    const order = getOrder(CONTROL_NUMBER);
+    const order = getOrder(REFERENCE3D);
 
     if (!order) {
       return res.send("<h1>Orden no encontrada</h1>");
     }
 
     // ===============================
-    // HACER EL COBRO
+    // COBRO A PAYWORKS
     // ===============================
     const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
@@ -115,9 +153,14 @@ export const handle3DSecureResponse = async (req, res) => {
       SECURITY_CODE: order.cvv,
       ENTRY_MODE: "MANUAL",
       MODE: "AUT",
+
+      // 3D SECURE
       ECI,
       CAVV,
-      XID
+      XID,
+      STATUS_3D: Status,
+      VERSION_3D: "2",
+      CONTROL_NUMBER: REFERENCE3D
     });
 
     console.log("==== REQUEST PAGO ====");
@@ -133,55 +176,38 @@ export const handle3DSecureResponse = async (req, res) => {
       }
     );
 
-    deleteOrder(CONTROL_NUMBER);
+    deleteOrder(REFERENCE3D);
 
     const result = response.data;
 
     console.log("==== RESPUESTA BANCO ====");
     console.log(result);
 
-    // ===============================
-    // PAGO APROBADO
-    // ===============================
     if (result.PAYW_RESULT === "A") {
-
       const authCode = result.AUTH_CODE || "N/A";
       const reference = result.REFERENCE || "N/A";
 
       return res.send(`
         <html>
-        <head>
-          <title>Comprobante</title>
-          <style>
-            body { font-family: Arial; background:#f4f4f4; text-align:center; }
-            .box { background:white; padding:25px; margin:50px auto; width:320px; border-radius:10px; }
-            button { padding:10px; background:#6a1b9a; color:white; border:none; border-radius:5px; }
-          </style>
-        </head>
-        <body>
-          <div class="box">
-            <h2>Pago aprobado</h2>
-            <p><b>Orden:</b> ${CONTROL_NUMBER}</p>
-            <p><b>Monto:</b> $${order.amount}</p>
-            <p><b>Autorización:</b> ${authCode}</p>
-            <p><b>Referencia:</b> ${reference}</p>
+        <body style="font-family: Arial; text-align:center;">
+          <h2>Pago aprobado</h2>
+          <p><b>Orden:</b> ${REFERENCE3D}</p>
+          <p><b>Monto:</b> $${order.amount}</p>
+          <p><b>Autorización:</b> ${authCode}</p>
+          <p><b>Referencia:</b> ${reference}</p>
 
-            <form method="POST" action="/api/payment/receipt">
-              <input type="hidden" name="controlNumber" value="${CONTROL_NUMBER}">
-              <input type="hidden" name="amount" value="${order.amount}">
-              <input type="hidden" name="authCode" value="${authCode}">
-              <input type="hidden" name="reference" value="${reference}">
-              <button type="submit">Descargar PDF</button>
-            </form>
-          </div>
+          <form method="POST" action="/api/payment/receipt">
+            <input type="hidden" name="controlNumber" value="${REFERENCE3D}">
+            <input type="hidden" name="amount" value="${order.amount}">
+            <input type="hidden" name="authCode" value="${authCode}">
+            <input type="hidden" name="reference" value="${reference}">
+            <button type="submit">Descargar PDF</button>
+          </form>
         </body>
         </html>
       `);
     }
 
-    // ===============================
-    // PAGO RECHAZADO
-    // ===============================
     return res.send(`
       <h1>Pago rechazado</h1>
       <pre>${JSON.stringify(result, null, 2)}</pre>
@@ -195,7 +221,7 @@ export const handle3DSecureResponse = async (req, res) => {
 
 
 // ===============================
-// GENERAR PDF
+// PDF
 // ===============================
 export const generateReceipt = (req, res) => {
   const { controlNumber, amount, authCode, reference } = req.body;

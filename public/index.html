@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Pago Seguro</title>
 
-<!-- eguridad básica navegador -->
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
 <meta name="referrer" content="no-referrer">
@@ -17,14 +16,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .container {
   background: white;
-  padding: 30px;
+  padding: 25px;
   border-radius: 15px;
-  width: 340px;
+  width: 360px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
@@ -33,10 +32,10 @@ h2 {
   color: #6a1b9a;
 }
 
-input {
+input, select {
   width: 100%;
   padding: 10px;
-  margin: 8px 0;
+  margin: 7px 0;
   border-radius: 8px;
   border: 1px solid #ccc;
 }
@@ -75,17 +74,31 @@ button:hover {
 <div class="container">
   <h2>Pago Seguro</h2>
 
-  <!-- IMPORTANTE: POST directo -->
   <form method="POST" action="/api/payment/3d-secure" autocomplete="off">
 
+    <!-- DATOS PERSONALES -->
     <input name="nombre" placeholder="Nombre completo" required>
     <input name="correo" type="email" placeholder="Correo electrónico" required>
+    <input name="telefono" placeholder="Teléfono" required>
 
+    <!-- DIRECCIÓN -->
+    <input name="direccion" placeholder="Dirección" required>
+    <input name="ciudad" placeholder="Ciudad" required>
+    <input name="cp" placeholder="Código Postal" required>
+
+    <!-- TIPO TARJETA -->
+    <select name="tipoTarjeta" required>
+      <option value="">Tipo de tarjeta</option>
+      <option value="CR">Crédito</option>
+      <option value="DB">Débito</option>
+    </select>
+
+    <!-- TARJETA -->
     <input 
       name="cardNumber" 
       placeholder="Número de tarjeta" 
       maxlength="16"
-      pattern="\d{16}" 
+      pattern="\d{15,16}" 
       inputmode="numeric"
       required
     >
@@ -126,21 +139,27 @@ button:hover {
 </div>
 
 <script>
+// Mostrar / ocultar CVV
 function toggleCVV() {
   const cvv = document.getElementById("cvv");
   cvv.type = cvv.type === "password" ? "text" : "password";
 }
 
-// formato MM/AA
+// Formato MM/AA automático
 document.querySelector('[name="cardExp"]').addEventListener("input", e => {
   let val = e.target.value.replace(/\D/g, "");
   if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);
   e.target.value = val;
 });
 
-// solo números tarjeta
+// Solo números tarjeta
 document.querySelector('[name="cardNumber"]').addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,16);
+});
+
+// Solo números teléfono
+document.querySelector('[name="telefono"]').addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g, "").slice(0,10);
 });
 </script>
 
