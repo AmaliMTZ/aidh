@@ -35,12 +35,22 @@ export const start3DSecure = async (req, res) => {
       tipoTarjeta
     } = req.body;
 
-    if (!cardNumber || cardNumber.length < 15) {
+    // ===============================
+    // VALIDACIONES
+    // ===============================
+    if (!/^\d{15,16}$/.test(cardNumber)) {
       return res.status(400).send("Tarjeta inválida");
     }
 
-    if (!nombre || !correo) {
+    if (
+      !nombre || !correo || !telefono ||
+      !direccion || !ciudad || !cp || !tipoTarjeta
+    ) {
       return res.status(400).send("Faltan datos del cliente");
+    }
+
+    if (Number(amount) < 1 || Number(amount) > 9999999.99) {
+      return res.status(400).send("Monto inválido");
     }
 
     const reference3D = "ORD" + Date.now();
@@ -62,6 +72,9 @@ export const start3DSecure = async (req, res) => {
       amount
     });
 
+    // ===============================
+    // REQUEST 3D SECURE
+    // ===============================
     const data = new URLSearchParams({
       // TARJETA
       CARD_NUMBER: cardNumber,
@@ -71,7 +84,7 @@ export const start3DSecure = async (req, res) => {
 
       // COMERCIO
       MERCHANT_ID,
-      MERCHANT_NAME: "AIDH",
+      MERCHANT_NAME: "COMERCIO ELECTRONICO ACADEMIA IDH",
       MERCHANT_CITY: "Saltillo",
 
       // 3D SECURE
@@ -80,16 +93,16 @@ export const start3DSecure = async (req, res) => {
       "3D_CERTIFICATION": "03",
       THREED_VERSION: "2",
 
-      // CLIENTE (OBLIGATORIOS)
+      // 🔥 DATOS DEL CLIENTE (REALES)
       NAME: firstName,
       LAST_NAME: lastName,
       EMAIL: correo,
-      CITY: ciudad || "Saltillo",
+      CITY: ciudad,
       COUNTRY: "MX",
-      POSTAL_CODE: cp || "25000",
-      STREET: direccion || "NA",
-      MOBILE_PHONE: telefono || "8440000000",
-      CREDIT_TYPE: tipoTarjeta || "CR"
+      POSTAL_CODE: cp,
+      STREET: direccion,
+      MOBILE_PHONE: telefono,
+      CREDIT_TYPE: tipoTarjeta
     });
 
     console.log("==== REQUEST 3D ====");

@@ -66,6 +66,12 @@ button:hover {
   font-size: 12px;
   color: #6a1b9a;
 }
+
+.section-title {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #555;
+}
 </style>
 </head>
 
@@ -76,24 +82,25 @@ button:hover {
 
   <form method="POST" action="/api/payment/3d-secure" autocomplete="off">
 
-    <!-- DATOS PERSONALES -->
+    <div class="section-title">Datos personales</div>
     <input name="nombre" placeholder="Nombre completo" required>
     <input name="correo" type="email" placeholder="Correo electrónico" required>
-    <input name="telefono" placeholder="Teléfono" required>
+    <input name="telefono" placeholder="Teléfono" pattern="\d{10}" required>
 
-    <!-- DIRECCIÓN -->
+    <div class="section-title">Dirección de facturación</div>
     <input name="direccion" placeholder="Dirección" required>
     <input name="ciudad" placeholder="Ciudad" required>
-    <input name="cp" placeholder="Código Postal" required>
+    <input name="cp" placeholder="Código Postal" pattern="\d{5}" required>
 
-    <!-- TIPO TARJETA -->
+    <div class="section-title">Tipo de tarjeta</div>
     <select name="tipoTarjeta" required>
-      <option value="">Tipo de tarjeta</option>
+      <option value="">Selecciona</option>
       <option value="CR">Crédito</option>
       <option value="DB">Débito</option>
     </select>
 
-    <!-- TARJETA -->
+    <div class="section-title">Datos de la tarjeta</div>
+
     <input 
       name="cardNumber" 
       placeholder="Número de tarjeta" 
@@ -128,12 +135,17 @@ button:hover {
       name="amount" 
       type="number"
       min="1"
+      max="9999999.99"
       step="0.01"
       placeholder="Monto"
       required
     >
 
     <button type="submit">Pagar</button>
+
+    <p style="font-size:12px; color:gray; text-align:center;">
+      Tus datos se usan únicamente para validar el pago de forma segura.
+    </p>
 
   </form>
 </div>
@@ -160,6 +172,11 @@ document.querySelector('[name="cardNumber"]').addEventListener("input", e => {
 // Solo números teléfono
 document.querySelector('[name="telefono"]').addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,10);
+});
+
+// Solo números CP
+document.querySelector('[name="cp"]').addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g, "").slice(0,5);
 });
 </script>
 
