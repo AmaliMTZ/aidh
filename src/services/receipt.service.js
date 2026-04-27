@@ -1,3 +1,14 @@
+import PDFDocument from "pdfkit";
+
+// helpers simples
+const numeroALetras = (num) => {
+  return num.toFixed(2); // puedes mejorar después
+};
+
+const centavos = (num) => {
+  return Math.round((num % 1) * 100);
+};
+
 export const generateReceiptPDF = (res, data) => {
   const doc = new PDFDocument({ margin: 50 });
 
@@ -28,6 +39,7 @@ export const generateReceiptPDF = (res, data) => {
     `FOLIO DE PAGO: ${String(control).padStart(10, "0")}`,
     { align: "right" }
   );
+
   doc.moveDown(2);
 
   let y = doc.y;
@@ -44,13 +56,8 @@ export const generateReceiptPDF = (res, data) => {
 
   y += 50;
 
-  const fecha = new Date().toLocaleDateString("es-MX", {
-    timeZone: "America/Mexico_City"
-  });
-
-  const hora = new Date().toLocaleTimeString("es-MX", {
-    timeZone: "America/Mexico_City"
-  });
+  const fecha = new Date().toLocaleDateString("es-MX");
+  const hora = new Date().toLocaleTimeString("es-MX");
 
   doc.text(`Fecha de pago: ${fecha}`, 50, y);
   doc.text(`Hora: ${hora}`, 50, y + 15);
@@ -88,7 +95,7 @@ export const generateReceiptPDF = (res, data) => {
   doc.fontSize(8).font("Helvetica");
   doc.text("Cadena de validación:", 50, y);
   doc.text(
-    "xFZksBcUeIEnVFqTZUQa==nARKNvSW0Bvmra8yhpzA==WB6IIG8A0...",
+    "xFZksBcUeIEnVFqTZUQa==...",
     50,
     y + 15,
     { width: 500 }

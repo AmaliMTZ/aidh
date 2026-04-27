@@ -1,9 +1,27 @@
 import { Router } from "express";
-import { testPayworks } from "../controllers/payment.controller.js";
+import {
+  start3DSecure,
+  handle3DSecureResponse,
+  generateReceipt
+} from "../controllers/payment.controller.js";
 
 const router = Router();
 
-// 🔥 prueba directa sin 3D
-router.get("/test-payworks", testPayworks);
+// ===============================
+// INICIO 3D
+// ===============================
+router.post("/3d-secure", start3DSecure);
+
+// ===============================
+// RESPUESTA 3D (POST y GET)
+// ===============================
+router.route("/3d-response")
+  .post(handle3DSecureResponse)
+  .get(handle3DSecureResponse);
+
+// ===============================
+// PDF
+// ===============================
+router.post("/receipt", generateReceipt);
 
 export default router;
