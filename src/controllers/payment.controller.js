@@ -271,5 +271,6 @@ export const generateReceipt = (req, res) => {
     amount,
     authCode,
     reference
+    
   });
 };
