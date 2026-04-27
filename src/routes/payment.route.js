@@ -10,11 +10,10 @@ const router = Router();
 // Inicio 3D Secure
 router.post("/3d-secure", start3DSecure);
 
-// Banorte puede regresar por POST o GET
-router.route("/3d-response")
-  .post(handle3DSecureResponse)
-  .get(handle3DSecureResponse);
+// 🔥 SOLO POST (correcto)
+router.post("/3d-response", handle3DSecureResponse);
 
-  router.post("/receipt", generateReceipt);
+// PDF
+router.post("/receipt", generateReceipt);
 
 export default router;

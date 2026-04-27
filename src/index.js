@@ -6,14 +6,14 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 
 import paymentRoute from "./routes/payment.route.js";
-import { PORT, BASE_URL } from "./config.js";
+import { PORT } from "./config.js";
 
 const app = express();
 
 // ===============================
-// CONFIG PROXY (IMPORTANTE)
+// CONFIG PROXY
 // ===============================
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 // ===============================
 // SEGURIDAD
@@ -24,14 +24,17 @@ app.use(
   })
 );
 
-// headers extra
+// headers (ajustados)
 app.use((req, res, next) => {
   res.setHeader(
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains"
   );
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+
+  // 🔥 IMPORTANTE
+  res.setHeader("X-Frame-Options", "ALLOWALL");
+
   next();
 });
 
@@ -42,18 +45,12 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
 });
-
 app.use(limiter);
 
 // ===============================
-// CORS (RESTRINGIDO)
+// CORS (ABIERTO PARA BANORTE)
 // ===============================
-app.use(
-  cors({
-    origin: BASE_URL, // importante para producción
-    methods: ["GET", "POST"],
-  })
-);
+app.use(cors());
 
 // ===============================
 // PARSERS
@@ -67,7 +64,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 // ===============================
-// ARCHIVOS ESTÁTICOS
+// ESTÁTICOS
 // ===============================
 const __dirname = process.cwd();
 app.use(express.static(path.join(__dirname, "public")));
@@ -89,7 +86,7 @@ app.get("/test", (req, res) => {
 });
 
 // ===============================
-// START SERVER
+// START
 // ===============================
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);

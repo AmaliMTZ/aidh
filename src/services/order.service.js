@@ -11,10 +11,13 @@ export const createOrder = (reference3D, data) => {
     createdAt: Date.now()
   });
 
-  // eliminar en 5 minutos
+  // ⏱️ limpiar después (más seguro: 10 min)
   setTimeout(() => {
-    orders.delete(reference3D);
-  }, 5 * 60 * 1000);
+    if (orders.has(reference3D)) {
+      orders.delete(reference3D);
+      console.log("Orden expirada:", reference3D);
+    }
+  }, 10 * 60 * 1000);
 };
 
 
@@ -23,7 +26,15 @@ export const createOrder = (reference3D, data) => {
 // ===============================
 export const getOrder = (reference3D) => {
   if (!reference3D) return null;
-  return orders.get(reference3D) || null;
+
+  const order = orders.get(reference3D);
+
+  if (!order) {
+    console.warn("Orden no encontrada:", reference3D);
+    return null;
+  }
+
+  return order;
 };
 
 
@@ -32,5 +43,9 @@ export const getOrder = (reference3D) => {
 // ===============================
 export const deleteOrder = (reference3D) => {
   if (!reference3D) return;
-  orders.delete(reference3D);
+
+  if (orders.has(reference3D)) {
+    orders.delete(reference3D);
+    console.log("Orden eliminada:", reference3D);
+  }
 };
