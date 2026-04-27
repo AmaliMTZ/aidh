@@ -28,7 +28,6 @@ export const generateReceiptPDF = (res, data) => {
     `FOLIO DE PAGO: ${String(control).padStart(10, "0")}`,
     { align: "right" }
   );
-
   doc.moveDown(2);
 
   let y = doc.y;
