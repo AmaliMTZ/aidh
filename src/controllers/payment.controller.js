@@ -74,7 +74,7 @@ export const start3DSecure = async (req, res) => {
       POSTAL_CODE: cp,
       STREET: direccion,
       MOBILE_PHONE: telefono,
-      CREDIT_TYPE: tipoTarjeta
+      CARD_TYPE: tipoTarjeta
     });
 
     console.log("==== REQUEST 3D ====");
