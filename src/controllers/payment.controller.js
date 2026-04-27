@@ -1,8 +1,8 @@
 import axios from "axios";
 import {
   MERCHANT_ID,
-  USER,
-  PASSWORD,
+  BANORTE_USER,
+  BANORTE_PASSWORD,
   TERMINAL,
   BASE_URL
 } from "../config.js";
@@ -35,7 +35,6 @@ export const start3DSecure = async (req, res) => {
       tipoTarjeta
     } = req.body;
 
-    // VALIDACIONES
     if (!/^\d{15,16}$/.test(cardNumber)) {
       return res.status(400).send("Tarjeta inválida");
     }
@@ -118,11 +117,10 @@ export const start3DSecure = async (req, res) => {
 
 
 // ===============================
-// RESPUESTA DEL 3D SECURE
+// RESPUESTA 3D SECURE
 // ===============================
 export const handle3DSecureResponse = async (req, res) => {
   try {
-    // 🔥 SIEMPRE POST
     const data = req.body;
 
     console.log("==== 3D RESPONSE ====");
@@ -146,22 +144,33 @@ export const handle3DSecureResponse = async (req, res) => {
     }
 
     // ===============================
-    // PAYLOAD LIMPIO (MODO PRUEBA)
+    // DEBUG CREDENCIALES
+    // ===============================
+    console.log("==== CREDENCIALES ====");
+    console.log({
+      BANORTE_USER,
+      BANORTE_PASSWORD,
+      TERMINAL,
+      MERCHANT_ID
+    });
+
+    // ===============================
+    // PAYLOAD CORRECTO
     // ===============================
     const payloadObj = {
       ID_AFILIACION: MERCHANT_ID,
-      USUARIO: USER,
-      CLAVE_USR: PASSWORD,
+      USUARIO: BANORTE_USER,
+      CLAVE_USR: BANORTE_PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
 
-      MODO: "AUT", // 🔥 PRUEBAS
+      MODO: "AUT",
 
       MONTO: Number(order.amount).toFixed(2),
 
-      NUMERO_TARJETA: order.cardNumber,
+      NUMERO_TARJETA: String(order.cardNumber),
       FECHA_EXP: order.cardExp.replace("/", ""),
-      CODIGO_SEGURIDAD: order.cvv,
+      CODIGO_SEGURIDAD: String(order.cvv),
 
       MODO_ENTRADA: "MANUAL",
       NUMERO_CONTROL: REFERENCE3D,
@@ -171,7 +180,6 @@ export const handle3DSecureResponse = async (req, res) => {
       VERSION_3D: "2"
     };
 
-    // SOLO si vienen
     if (CAVV && CAVV.trim() !== "") {
       payloadObj.CAVV = CAVV;
     }
@@ -192,7 +200,7 @@ export const handle3DSecureResponse = async (req, res) => {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
-        responseType: "text" // 🔥 IMPORTANTE
+        responseType: "text"
       }
     );
 
@@ -203,7 +211,6 @@ export const handle3DSecureResponse = async (req, res) => {
     console.log("==== RAW BANORTE ====");
     console.log(raw);
 
-    // VALIDACIÓN
     if (!raw || typeof raw !== "string") {
       return res.send(`
         <h1>Error: respuesta vacía del banco</h1>
@@ -211,7 +218,6 @@ export const handle3DSecureResponse = async (req, res) => {
       `);
     }
 
-    // PARSEO SEGURO
     let result = {};
     try {
       result = Object.fromEntries(new URLSearchParams(raw));
@@ -228,29 +234,15 @@ export const handle3DSecureResponse = async (req, res) => {
     const paywResult = result.RESULTADO_PAYW || result.PAYW_RESULT;
 
     if (paywResult === "A") {
-      const authCode = result.CODIGO_AUT || result.AUTH_CODE || "N/A";
-      const reference = result.REFERENCIA || result.REFERENCE || "N/A";
-
       return res.send(`
-        <html>
-        <body style="font-family: Arial; text-align:center;">
-          <h2>Pago aprobado</h2>
-          <p><b>Orden:</b> ${REFERENCE3D}</p>
-          <p><b>Monto:</b> $${order.amount}</p>
-          <p><b>Autorización:</b> ${authCode}</p>
-          <p><b>Referencia:</b> ${reference}</p>
-        </body>
-        </html>
+        <h2>Pago aprobado</h2>
+        <pre>${JSON.stringify(result, null, 2)}</pre>
       `);
     }
 
     return res.send(`
-      <html>
-      <body style="font-family: Arial; text-align:center;">
-        <h2>Pago rechazado</h2>
-        <pre>${JSON.stringify(result, null, 2)}</pre>
-      </body>
-      </html>
+      <h2>Pago rechazado</h2>
+      <pre>${JSON.stringify(result, null, 2)}</pre>
     `);
 
   } catch (error) {
@@ -271,6 +263,5 @@ export const generateReceipt = (req, res) => {
     amount,
     authCode,
     reference
-    
   });
 };
