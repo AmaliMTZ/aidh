@@ -126,6 +126,9 @@ export const handle3DSecureResponse = async (req, res) => {
     console.log("==== 3D RESPONSE ====");
     console.log(data);
 
+    console.log("==== 3D COMPLETO ====");
+console.log(JSON.stringify(data, null, 2));
+
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
     if (!Status) {
@@ -184,9 +187,9 @@ export const handle3DSecureResponse = async (req, res) => {
       payloadObj.CAVV = CAVV;
     }
 
-    if (XID && XID.trim() !== "" && order.cardType !== "MC") {
-      payloadObj.XID = XID;
-    }
+    if (XID && XID.trim() !== "") {
+  payloadObj.XID = XID;
+}
 
     const payload = new URLSearchParams(payloadObj);
 
