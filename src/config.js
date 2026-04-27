@@ -10,6 +10,7 @@ export const BANORTE_PASSWORD = process.env.BANORTE_PASSWORD;
 export const TERMINAL = process.env.TERMINAL;
 export const BASE_URL = process.env.BASE_URL;
 
+// Validación
 function validateEnv() {
   const missing = [];
 
@@ -20,21 +21,10 @@ function validateEnv() {
   if (!BASE_URL) missing.push("BASE_URL");
 
   if (missing.length > 0) {
-    console.error("Faltan variables de entorno:");
-    missing.forEach(v => console.error(` - ${v}`));
+    console.error("Faltan variables:");
+    console.log(missing);
     process.exit(1);
   }
-
-  if (!/^https?:\/\//.test(BASE_URL)) {
-    console.error("BASE_URL debe iniciar con http:// o https://");
-    process.exit(1);
-  }
-
-  console.log("CONFIG OK:", {
-    MERCHANT_ID,
-    TERMINAL,
-    BASE_URL
-  });
 }
 
 validateEnv();
