@@ -20,7 +20,7 @@ import { generateReceiptPDF } from "../services/receipt.service.js";
 // DETECTAR MARCA DE TARJETA
 // ===============================
 const getCardType = (cardNumber) => {
-  if (/^4/.test(cardNumber)) return "VISA";
+  if ( /^4/.test(cardNumber)) return "VISA";
   if (/^5[1-5]/.test(cardNumber)) return "MC";
   if (/^3[47]/.test(cardNumber)) return "AMEX";
   return "VISA";
@@ -156,6 +156,7 @@ export const handle3DSecureResponse = async (req, res) => {
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
+        URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`,
 
       MODO: "AUT",
 
@@ -236,4 +237,12 @@ export const generateReceipt = (req, res) => {
     authCode,
     reference
   });
+};
+
+// RESPUESTA FINAL PAYWORKS
+export const handlePayResponse = (req, res) => {
+  console.log("==== RESPUESTA FINAL BANORTE ====");
+  console.log(req.body);
+
+  res.send("OK");
 };
