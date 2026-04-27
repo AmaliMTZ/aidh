@@ -199,6 +199,9 @@ export const handle3DSecureResponse = async (req, res) => {
     console.log("==== RAW BANORTE ====");
     console.log(raw);
 
+    console.log("RAW STRING:", JSON.stringify(raw));
+console.log("LENGTH:", raw.length);
+
     if (!raw) {
       return res.send("<h1>Error: respuesta vacía del banco</h1>");
     }
