@@ -17,6 +17,17 @@ import { generateReceiptPDF } from "../services/receipt.service.js";
 
 
 // ===============================
+// DETECTAR MARCA DE TARJETA
+// ===============================
+const getCardType = (cardNumber) => {
+  if (/^4/.test(cardNumber)) return "VISA";
+  if (/^5[1-5]/.test(cardNumber)) return "MC";
+  if (/^3[47]/.test(cardNumber)) return "AMEX";
+  return "VISA";
+};
+
+
+// ===============================
 // INICIO 3D SECURE
 // ===============================
 export const start3DSecure = async (req, res) => {
@@ -35,26 +46,41 @@ export const start3DSecure = async (req, res) => {
       tipoTarjeta
     } = req.body;
 
-    if (!cardNumber || !cardExp || !cvv || !amount) {
-      return res.status(400).send("Datos de pago incompletos");
+    if (!/^\d{15,16}$/.test(cardNumber)) {
+      return res.status(400).send("Tarjeta inválida");
+    }
+
+    if (
+      !nombre || !correo || !telefono ||
+      !direccion || !ciudad || !cp || !tipoTarjeta
+    ) {
+      return res.status(400).send("Faltan datos del cliente");
+    }
+
+    if (Number(amount) < 1 || Number(amount) > 9999999.99) {
+      return res.status(400).send("Monto inválido");
     }
 
     const reference3D = "ORD" + Date.now();
+
+    const cardType = getCardType(cardNumber);
+
+    const [firstName, ...rest] = nombre.split(" ");
+    const lastName = rest.join(" ") || "NA";
 
     createOrder(reference3D, {
       cardNumber,
       cardExp,
       cvv,
-      amount
+      amount,
+      cardType
     });
-
-    const [firstName, ...rest] = nombre.split(" ");
-    const lastName = rest.join(" ") || "NA";
 
     const data = new URLSearchParams({
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
       AMOUNT: Number(amount).toFixed(2),
+      CARD_TYPE: cardType, // 🔥 CORRECTO
 
       MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
@@ -62,7 +88,6 @@ export const start3DSecure = async (req, res) => {
 
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       REFERENCE3D: reference3D,
-
       "3D_CERTIFICATION": "03",
       THREED_VERSION: "2",
 
@@ -73,8 +98,7 @@ export const start3DSecure = async (req, res) => {
       COUNTRY: "MX",
       POSTAL_CODE: cp,
       STREET: direccion,
-      MOBILE_PHONE: telefono,
-      CARD_TYPE: tipoTarjeta
+      MOBILE_PHONE: telefono
     });
 
     console.log("==== REQUEST 3D ====");
@@ -93,7 +117,7 @@ export const start3DSecure = async (req, res) => {
     res.send(response.data);
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error("Error 3D:", error.response?.data || error.message);
     res.status(500).send("Error en 3D Secure");
   }
 };
@@ -111,28 +135,28 @@ export const handle3DSecureResponse = async (req, res) => {
 
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
-    // VALIDACIÓN OBLIGATORIA DEL MANUAL
-    if (!Status || Status !== "200") {
+    if (!Status) {
+      return res.send("<h1>Error: no llegaron datos del 3D</h1>");
+    }
+
+    if (Status !== "200") {
       deleteOrder(REFERENCE3D);
       return res.send(`<h1>3D fallido (${Status})</h1>`);
     }
 
-    if (!ECI) return res.send("<h1>Error: ECI faltante</h1>");
-    if (!CAVV) return res.send("<h1>Error: CAVV faltante</h1>");
-
     const order = getOrder(REFERENCE3D);
     if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
-    // ===============================
-    // PAYLOAD PAYWORKS (MANUAL EXACTO)
-    // ===============================
+    console.log("==== CREDENCIALES ====");
+    console.log({ USER, PASSWORD, TERMINAL, MERCHANT_ID });
+
     const payloadObj = {
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
-
       CMD_TRANS: "VENTA",
+
       MODO: "AUT",
 
       MONTO: Number(order.amount).toFixed(2),
@@ -149,14 +173,8 @@ export const handle3DSecureResponse = async (req, res) => {
       VERSION_3D: "2"
     };
 
-    // SOLO SI VIENEN (regla del manual)
-    if (CAVV && CAVV.trim() !== "") {
-      payloadObj.CAVV = CAVV;
-    }
-
-    if (XID && XID.trim() !== "") {
-      payloadObj.XID = XID;
-    }
+    if (CAVV) payloadObj.CAVV = CAVV;
+    if (XID) payloadObj.XID = XID;
 
     const payload = new URLSearchParams(payloadObj);
 
@@ -191,26 +209,20 @@ export const handle3DSecureResponse = async (req, res) => {
     console.log(result);
 
     if (result.RESULTADO_PAYW === "A") {
-      return res.send(`
-        <h2>Pago aprobado</h2>
-        <pre>${JSON.stringify(result, null, 2)}</pre>
-      `);
+      return res.send(`<h2>Pago aprobado</h2><pre>${JSON.stringify(result, null, 2)}</pre>`);
     }
 
-    return res.send(`
-      <h2>Pago rechazado</h2>
-      <pre>${JSON.stringify(result, null, 2)}</pre>
-    `);
+    return res.send(`<h2>Pago rechazado</h2><pre>${JSON.stringify(result, null, 2)}</pre>`);
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error("Error pago:", error.response?.data || error.message);
     res.send("<h1>Error en pago</h1>");
   }
 };
 
 
 // ===============================
-// RECIBO
+// PDF
 // ===============================
 export const generateReceipt = (req, res) => {
   const { controlNumber, amount, authCode, reference } = req.body;
