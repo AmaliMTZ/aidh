@@ -13,11 +13,9 @@ import {
   deleteOrder
 } from "../services/order.service.js";
 
-import { generateReceiptPDF } from "../services/receipt.service.js";
-
 
 // ===============================
-// DETECTAR MARCA DE TARJETA
+// DETECTAR TARJETA
 // ===============================
 const getCardType = (cardNumber) => {
   if (/^4/.test(cardNumber)) return "VISA";
@@ -28,7 +26,7 @@ const getCardType = (cardNumber) => {
 
 
 // ===============================
-// INICIO 3D SECURE
+// 1. INICIO 3D
 // ===============================
 export const start3DSecure = async (req, res) => {
   try {
@@ -42,14 +40,18 @@ export const start3DSecure = async (req, res) => {
       telefono,
       direccion,
       ciudad,
-      cp,
-      tipoTarjeta
+      cp
     } = req.body;
+
+    // 🔒 validación básica (no rompe flujo)
+    if (!cardNumber || !cardExp || !cvv || !amount) {
+      return res.status(400).send("Datos incompletos");
+    }
 
     const reference3D = "ORD" + Date.now();
     const cardType = getCardType(cardNumber);
 
-    const [firstName, ...rest] = nombre.split(" ");
+    const [firstName, ...rest] = (nombre || "").split(" ");
     const lastName = rest.join(" ") || "NA";
 
     createOrder(reference3D, {
@@ -60,7 +62,7 @@ export const start3DSecure = async (req, res) => {
       cardType
     });
 
-    const data = new URLSearchParams({
+    const payload = new URLSearchParams({
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
       AMOUNT: Number(amount).toFixed(2),
@@ -72,6 +74,7 @@ export const start3DSecure = async (req, res) => {
 
       FORWARD_PATH: `${BASE_URL}/api/payment/3d-response`,
       REFERENCE3D: reference3D,
+
       "3D_CERTIFICATION": "03",
       THREED_VERSION: "2",
 
@@ -85,9 +88,12 @@ export const start3DSecure = async (req, res) => {
       MOBILE_PHONE: telefono
     });
 
+    console.log("==== REQUEST 3D ====");
+    console.log(payload.toString());
+
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
-      data.toString(),
+      payload.toString(),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
@@ -105,14 +111,14 @@ export const start3DSecure = async (req, res) => {
 
 
 // ===============================
-// RESPUESTA 3D
+// 2. RESPUESTA 3D
 // ===============================
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.body;
 
     console.log("==== 3D COMPLETO ====");
-    console.log(JSON.stringify(data, null, 2));
+    console.log(data);
 
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
@@ -124,34 +130,36 @@ export const handle3DSecureResponse = async (req, res) => {
     const order = getOrder(REFERENCE3D);
     if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
-    const payloadObj = {
+    const payload = new URLSearchParams({
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
+
       CMD_TRANS: "VENTA",
-
-      URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`,
-
       MODO: "AUT",
+
       MONTO: Number(order.amount).toFixed(2),
 
       NUMERO_TARJETA: String(order.cardNumber),
       FECHA_EXP: order.cardExp.replace("/", ""),
       CODIGO_SEGURIDAD: String(order.cvv),
-
       MODO_ENTRADA: "MANUAL",
+
       NUMERO_CONTROL: REFERENCE3D,
 
       ESTATUS_3D: Status,
       ECI: ECI,
-      VERSION_3D: "2"
-    };
+      VERSION_3D: "2",
 
-    if (CAVV) payloadObj.CAVV = CAVV;
-    if (XID) payloadObj.XID = XID;
+      ...(CAVV && { CAVV }),
+      ...(XID && { XID }),
 
-    const payload = new URLSearchParams(payloadObj);
+      URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`
+    });
+
+    console.log("==== REQUEST PAYWORKS ====");
+    console.log(payload.toString());
 
     await axios.post(
       "https://via.pagosbanorte.com/payw2",
@@ -165,7 +173,6 @@ export const handle3DSecureResponse = async (req, res) => {
 
     deleteOrder(REFERENCE3D);
 
-    // 👇 AQUÍ YA NO ESPERAS RESPUESTA
     res.send("<h2>Procesando pago...</h2>");
 
   } catch (error) {
@@ -176,13 +183,12 @@ export const handle3DSecureResponse = async (req, res) => {
 
 
 // ===============================
-// RESPUESTA FINAL BANORTE (AQUÍ LLEGA TODO)
+// 3. RESPUESTA FINAL BANORTE
 // ===============================
 export const handlePayResponse = (req, res) => {
   console.log("==== RESPUESTA FINAL BANORTE ====");
 
   const raw = req.body || "";
-
   console.log("RAW:", raw);
 
   const params = new URLSearchParams(raw);
@@ -197,19 +203,4 @@ export const handlePayResponse = (req, res) => {
   }
 
   res.send("OK");
-};
-
-
-// ===============================
-// PDF
-// ===============================
-export const generateReceipt = (req, res) => {
-  const { controlNumber, amount, authCode, reference } = req.body;
-
-  generateReceiptPDF(res, {
-    controlNumber,
-    amount,
-    authCode,
-    reference
-  });
 };

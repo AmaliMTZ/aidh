@@ -24,7 +24,6 @@ app.use(
   })
 );
 
-// headers seguros
 app.use((req, res, next) => {
   res.setHeader(
     "Strict-Transport-Security",
@@ -55,13 +54,8 @@ app.use(
 );
 
 // ===============================
-// PARSERS (CORREGIDOS)
+// PARSERS (CORRECTOS)
 // ===============================
-
-// 👇 ESTE ES CLAVE PARA BANORTE
-app.use(express.text({ type: "*/*" }));
-
-// 👇 estos siguen funcionando normal
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 

@@ -11,12 +11,15 @@ const router = Router();
 // INICIO 3D
 router.post("/3d-secure", start3DSecure);
 
-// RESPUESTA 3D (POST y GET)
+// RESPUESTA 3D
 router.route("/3d-response")
   .post(handle3DSecureResponse)
   .get(handle3DSecureResponse);
 
-router.post("/pay-response", handlePayResponse);
+// RESPUESTA FINAL BANORTE
+router.route("/pay-response")
+  .post(handlePayResponse)
+  .get(handlePayResponse);
 
 // PDF
 router.post("/receipt", generateReceipt);

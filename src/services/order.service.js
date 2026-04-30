@@ -7,12 +7,6 @@ export const createOrder = (reference3D, data) => {
   if (!reference3D || typeof reference3D !== "string") return;
   if (!data || typeof data !== "object") return;
 
-  orders.set(reference3D, {
-    ...data,
-    createdAt: Date.now()
-  });
-
-  // ⏱️ eliminar después de 10 min
   const timeout = setTimeout(() => {
     if (orders.has(reference3D)) {
       orders.delete(reference3D);
@@ -20,7 +14,11 @@ export const createOrder = (reference3D, data) => {
     }
   }, 10 * 60 * 1000);
 
-  // opcional: guardar timeout si quisieras cancelarlo después
+  orders.set(reference3D, {
+    ...data,
+    createdAt: Date.now(),
+    timeout
+  });
 };
 
 
@@ -37,6 +35,14 @@ export const getOrder = (reference3D) => {
     return null;
   }
 
+  const isExpired = Date.now() - order.createdAt > 10 * 60 * 1000;
+
+  if (isExpired) {
+    orders.delete(reference3D);
+    console.warn("Orden expirada al leer:", reference3D);
+    return null;
+  }
+
   return order;
 };
 
@@ -46,6 +52,12 @@ export const getOrder = (reference3D) => {
 // ===============================
 export const deleteOrder = (reference3D) => {
   if (!reference3D) return;
+
+  const order = orders.get(reference3D);
+
+  if (order?.timeout) {
+    clearTimeout(order.timeout);
+  }
 
   if (orders.delete(reference3D)) {
     console.log("Orden eliminada:", reference3D);
