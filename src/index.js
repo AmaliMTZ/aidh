@@ -31,10 +31,7 @@ app.use((req, res, next) => {
     "max-age=31536000; includeSubDomains"
   );
   res.setHeader("X-Content-Type-Options", "nosniff");
-
-  // ✔️ compatible con 3D Secure
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
-
   next();
 });
 
@@ -52,14 +49,19 @@ app.use(limiter);
 // ===============================
 app.use(
   cors({
-    origin: "*", // puedes restringir luego
+    origin: "*",
     methods: ["GET", "POST"],
   })
 );
 
 // ===============================
-// PARSERS
+// PARSERS (CORREGIDOS)
 // ===============================
+
+// 👇 ESTE ES CLAVE PARA BANORTE
+app.use(express.text({ type: "*/*" }));
+
+// 👇 estos siguen funcionando normal
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 

@@ -20,7 +20,7 @@ import { generateReceiptPDF } from "../services/receipt.service.js";
 // DETECTAR MARCA DE TARJETA
 // ===============================
 const getCardType = (cardNumber) => {
-  if ( /^4/.test(cardNumber)) return "VISA";
+  if (/^4/.test(cardNumber)) return "VISA";
   if (/^5[1-5]/.test(cardNumber)) return "MC";
   if (/^3[47]/.test(cardNumber)) return "AMEX";
   return "VISA";
@@ -46,23 +46,7 @@ export const start3DSecure = async (req, res) => {
       tipoTarjeta
     } = req.body;
 
-    if (!/^\d{15,16}$/.test(cardNumber)) {
-      return res.status(400).send("Tarjeta inválida");
-    }
-
-    if (
-      !nombre || !correo || !telefono ||
-      !direccion || !ciudad || !cp || !tipoTarjeta
-    ) {
-      return res.status(400).send("Faltan datos del cliente");
-    }
-
-    if (Number(amount) < 1 || Number(amount) > 9999999.99) {
-      return res.status(400).send("Monto inválido");
-    }
-
     const reference3D = "ORD" + Date.now();
-
     const cardType = getCardType(cardNumber);
 
     const [firstName, ...rest] = nombre.split(" ");
@@ -80,7 +64,7 @@ export const start3DSecure = async (req, res) => {
       CARD_NUMBER: cardNumber,
       CARD_EXP: cardExp,
       AMOUNT: Number(amount).toFixed(2),
-      CARD_TYPE: cardType, // 🔥 CORRECTO
+      CARD_TYPE: cardType,
 
       MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
@@ -100,9 +84,6 @@ export const start3DSecure = async (req, res) => {
       STREET: direccion,
       MOBILE_PHONE: telefono
     });
-
-    console.log("==== REQUEST 3D ====");
-    console.log(data.toString());
 
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
@@ -135,10 +116,6 @@ export const handle3DSecureResponse = async (req, res) => {
 
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
-    if (!Status) {
-      return res.send("<h1>Error: no llegaron datos del 3D</h1>");
-    }
-
     if (Status !== "200") {
       deleteOrder(REFERENCE3D);
       return res.send(`<h1>3D fallido (${Status})</h1>`);
@@ -147,19 +124,16 @@ export const handle3DSecureResponse = async (req, res) => {
     const order = getOrder(REFERENCE3D);
     if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
-    console.log("==== CREDENCIALES ====");
-    console.log({ USER, PASSWORD, TERMINAL, MERCHANT_ID });
-
     const payloadObj = {
       ID_AFILIACION: MERCHANT_ID,
       USUARIO: USER,
       CLAVE_USR: PASSWORD,
       ID_TERMINAL: TERMINAL,
       CMD_TRANS: "VENTA",
-        URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`,
+
+      URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`,
 
       MODO: "AUT",
-
       MONTO: Number(order.amount).toFixed(2),
 
       NUMERO_TARJETA: String(order.cardNumber),
@@ -179,49 +153,50 @@ export const handle3DSecureResponse = async (req, res) => {
 
     const payload = new URLSearchParams(payloadObj);
 
-    console.log("==== REQUEST PAYWORKS ====");
-    console.log(payload.toString());
-
-    const response = await axios.post(
+    await axios.post(
       "https://via.pagosbanorte.com/payw2",
       payload.toString(),
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
-        },
-        responseType: "text"
+        }
       }
     );
 
     deleteOrder(REFERENCE3D);
 
-    const raw = response.data;
-
-    console.log("==== RAW BANORTE ====");
-    console.log(raw);
-
-    console.log("RAW STRING:", JSON.stringify(raw));
-console.log("LENGTH:", raw.length);
-
-    if (!raw) {
-      return res.send("<h1>Error: respuesta vacía del banco</h1>");
-    }
-
-    const result = Object.fromEntries(new URLSearchParams(raw));
-
-    console.log("==== RESULTADO ====");
-    console.log(result);
-
-    if (result.RESULTADO_PAYW === "A") {
-      return res.send(`<h2>Pago aprobado</h2><pre>${JSON.stringify(result, null, 2)}</pre>`);
-    }
-
-    return res.send(`<h2>Pago rechazado</h2><pre>${JSON.stringify(result, null, 2)}</pre>`);
+    // 👇 AQUÍ YA NO ESPERAS RESPUESTA
+    res.send("<h2>Procesando pago...</h2>");
 
   } catch (error) {
     console.error("Error pago:", error.response?.data || error.message);
     res.send("<h1>Error en pago</h1>");
   }
+};
+
+
+// ===============================
+// RESPUESTA FINAL BANORTE (AQUÍ LLEGA TODO)
+// ===============================
+export const handlePayResponse = (req, res) => {
+  console.log("==== RESPUESTA FINAL BANORTE ====");
+
+  const raw = req.body || "";
+
+  console.log("RAW:", raw);
+
+  const params = new URLSearchParams(raw);
+  const data = Object.fromEntries(params);
+
+  console.log("PARSEADO:", data);
+
+  if (data.RESULTADO_PAYW === "A") {
+    console.log("✅ PAGO APROBADO");
+  } else {
+    console.log("❌ PAGO RECHAZADO");
+  }
+
+  res.send("OK");
 };
 
 
@@ -237,12 +212,4 @@ export const generateReceipt = (req, res) => {
     authCode,
     reference
   });
-};
-
-// RESPUESTA FINAL PAYWORKS
-export const handlePayResponse = (req, res) => {
-  console.log("==== RESPUESTA FINAL BANORTE ====");
-  console.log(req.body);
-
-  res.send("OK");
 };
