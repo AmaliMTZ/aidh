@@ -179,8 +179,10 @@ export const handle3DSecureResponse = async (req, res) => {
       }
     );
 
+    // 🔥 AQUÍ ESTÁ EL ÚNICO CAMBIO REAL
     console.log("\n===== RESPUESTA PAYWORKS =====");
-    console.log(payResponse.data);
+    console.log("Tipo:", typeof payResponse.data);
+    console.log("Contenido:", payResponse.data);
 
     // ⚠️ NO borrar orden aquí
     // deleteOrder(REFERENCE3D);
@@ -192,7 +194,6 @@ export const handle3DSecureResponse = async (req, res) => {
     res.send("<h1>Error en pago</h1>");
   }
 };
-
 
 // ===============================
 // 3. RESPUESTA FINAL BANORTE
