@@ -5,7 +5,7 @@ dotenv.config();
 export const PORT = process.env.PORT || 3000;
 
 export const MERCHANT_ID = process.env.MERCHANT_ID;
-export const USER = process.env.PAY_USER; // 👈 nombre seguro
+export const USER = process.env.USER; // 👈 nombre seguro
 export const PASSWORD = process.env.PASSWORD;
 export const TERMINAL = process.env.TERMINAL;
 export const BASE_URL = process.env.BASE_URL;
@@ -14,7 +14,7 @@ function validateEnv() {
   const missing = [];
 
   if (!MERCHANT_ID) missing.push("MERCHANT_ID");
-  if (!USER) missing.push("PAY_USER");
+  if (!USER) missing.push("USER");
   if (!PASSWORD) missing.push("PASSWORD");
   if (!TERMINAL) missing.push("TERMINAL");
   if (!BASE_URL) missing.push("BASE_URL");
