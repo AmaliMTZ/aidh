@@ -1,4 +1,6 @@
 import axios from "axios";
+import PDFDocument from "pdfkit";
+
 import {
   MERCHANT_ID,
   USER,
@@ -43,7 +45,6 @@ export const start3DSecure = async (req, res) => {
       cp
     } = req.body;
 
-    // 🔒 validación básica (no rompe flujo)
     if (!cardNumber || !cardExp || !cvv || !amount) {
       return res.status(400).send("Datos incompletos");
     }
@@ -88,9 +89,6 @@ export const start3DSecure = async (req, res) => {
       MOBILE_PHONE: telefono
     });
 
-    console.log("==== REQUEST 3D ====");
-    console.log(payload.toString());
-
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
       payload.toString(),
@@ -116,9 +114,6 @@ export const start3DSecure = async (req, res) => {
 export const handle3DSecureResponse = async (req, res) => {
   try {
     const data = req.body;
-
-    console.log("==== 3D COMPLETO ====");
-    console.log(data);
 
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
 
@@ -158,9 +153,6 @@ export const handle3DSecureResponse = async (req, res) => {
       URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`
     });
 
-    console.log("==== REQUEST PAYWORKS ====");
-    console.log(payload.toString());
-
     await axios.post(
       "https://via.pagosbanorte.com/payw2",
       payload.toString(),
@@ -186,21 +178,41 @@ export const handle3DSecureResponse = async (req, res) => {
 // 3. RESPUESTA FINAL BANORTE
 // ===============================
 export const handlePayResponse = (req, res) => {
-  console.log("==== RESPUESTA FINAL BANORTE ====");
-
   const raw = req.body || "";
-  console.log("RAW:", raw);
-
   const params = new URLSearchParams(raw);
   const data = Object.fromEntries(params);
 
-  console.log("PARSEADO:", data);
-
-  if (data.RESULTADO_PAYW === "A") {
-    console.log("✅ PAGO APROBADO");
-  } else {
-    console.log("❌ PAGO RECHAZADO");
-  }
+  console.log("BANORTE:", data);
 
   res.send("OK");
+};
+
+
+// ===============================
+// 4. GENERAR RECIBO PDF
+// ===============================
+export const generateReceipt = (req, res) => {
+  try {
+    const { amount, reference, status } = req.body;
+
+    const doc = new PDFDocument();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=recibo.pdf");
+
+    doc.pipe(res);
+
+    doc.fontSize(20).text("RECIBO DE PAGO", { align: "center" });
+
+    doc.moveDown();
+    doc.fontSize(12).text(`Referencia: ${reference || "N/A"}`);
+    doc.text(`Monto: $${amount || "N/A"}`);
+    doc.text(`Estado: ${status || "DESCONOCIDO"}`);
+    doc.text(`Fecha: ${new Date().toLocaleString()}`);
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).send("Error generando recibo");
+  }
 };
