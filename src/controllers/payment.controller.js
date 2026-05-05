@@ -89,6 +89,9 @@ export const start3DSecure = async (req, res) => {
       MOBILE_PHONE: telefono
     });
 
+    console.log("\n===== REQUEST 3D (BANORTE) =====");
+    console.log(payload.toString());
+
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
       payload.toString(),
@@ -98,6 +101,9 @@ export const start3DSecure = async (req, res) => {
         }
       }
     );
+
+    console.log("\n===== RESPONSE 3D (BANORTE) =====");
+    console.log(response.data);
 
     res.send(response.data);
 
@@ -113,6 +119,9 @@ export const start3DSecure = async (req, res) => {
 // ===============================
 export const handle3DSecureResponse = async (req, res) => {
   try {
+    console.log("\n===== RESPUESTA 3D RECIBIDA =====");
+    console.log(req.body);
+
     const data = req.body;
 
     const { Status, REFERENCE3D, ECI, CAVV, XID } = data;
@@ -123,6 +132,10 @@ export const handle3DSecureResponse = async (req, res) => {
     }
 
     const order = getOrder(REFERENCE3D);
+
+    console.log("\n===== ORDEN RECUPERADA =====");
+    console.log(order);
+
     if (!order) return res.send("<h1>Orden no encontrada</h1>");
 
     const payload = new URLSearchParams({
@@ -153,7 +166,10 @@ export const handle3DSecureResponse = async (req, res) => {
       URL_RESPUESTA: `${BASE_URL}/api/payment/pay-response`
     });
 
-    await axios.post(
+    console.log("\n===== ENVIANDO A PAYWORKS =====");
+    console.log(payload.toString());
+
+    const payResponse = await axios.post(
       "https://via.pagosbanorte.com/payw2",
       payload.toString(),
       {
@@ -163,7 +179,11 @@ export const handle3DSecureResponse = async (req, res) => {
       }
     );
 
-   // deleteOrder(REFERENCE3D);
+    console.log("\n===== RESPUESTA PAYWORKS =====");
+    console.log(payResponse.data);
+
+    // ⚠️ NO borrar orden aquí
+    // deleteOrder(REFERENCE3D);
 
     res.send("<h2>Procesando pago...</h2>");
 
@@ -178,16 +198,21 @@ export const handle3DSecureResponse = async (req, res) => {
 // 3. RESPUESTA FINAL BANORTE
 // ===============================
 export const handlePayResponse = (req, res) => {
+  console.log("\n===== BANORTE CALLBACK =====");
+
+  console.log("URL ACCEDIDA:", req.originalUrl);
+  console.log("RAW:", req.body);
+
   const raw = req.body || "";
   const params = new URLSearchParams(raw);
   const data = Object.fromEntries(params);
 
-  console.log("BANORTE:", data);
+  console.log("PARSED:", data);
 
   if (data.NUMERO_CONTROL) {
     deleteOrder(data.NUMERO_CONTROL);
   }
-  
+
   res.send("OK");
 };
 
