@@ -163,7 +163,7 @@ export const handle3DSecureResponse = async (req, res) => {
       }
     );
 
-    deleteOrder(REFERENCE3D);
+   // deleteOrder(REFERENCE3D);
 
     res.send("<h2>Procesando pago...</h2>");
 
@@ -184,6 +184,10 @@ export const handlePayResponse = (req, res) => {
 
   console.log("BANORTE:", data);
 
+  if (data.NUMERO_CONTROL) {
+    deleteOrder(data.NUMERO_CONTROL);
+  }
+  
   res.send("OK");
 };
 
