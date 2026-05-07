@@ -350,7 +350,7 @@ export const handle3DSecureResponse =
             TERMINAL,
 
           CMD_TRANS:
-            "VENTA",
+            "SALE",
 
           MODE:
             "AUT",
