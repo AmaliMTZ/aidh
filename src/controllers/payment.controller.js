@@ -352,7 +352,7 @@ export const handle3DSecureResponse =
           CMD_TRANS:
             "VENTA",
 
-          MODE:
+          MODO:
             "AUT",
 
           AMOUNT:
