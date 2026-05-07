@@ -142,7 +142,7 @@ export const start3DSecure = async (
           "Saltillo",
 
         FORWARD_PATH:
-          `${BASE_URL}/api/payment/3d-response`,
+          `${BASE_URL}/api/payment/3ds`,
 
         REFERENCE3D:
           reference3D,
@@ -352,7 +352,7 @@ export const handle3DSecureResponse =
           CMD_TRANS:
             "VENTA",
 
-          MODO:
+          MODE:
             "AUT",
 
           AMOUNT:
@@ -397,7 +397,7 @@ export const handle3DSecureResponse =
             "EN",
 
           URL_RESPUESTA:
-            `${BASE_URL}/api/payment/pay-response`
+            `${BASE_URL}/api/payment/pay`
         });
 
       console.log(
