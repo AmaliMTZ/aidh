@@ -2,39 +2,121 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export const PORT = process.env.PORT || 3000;
 
-export const MERCHANT_ID = process.env.MERCHANT_ID;
-export const USER = process.env.USER; // 👈 nombre seguro
-export const PASSWORD = process.env.PASSWORD;
-export const TERMINAL = process.env.TERMINAL;
-export const BASE_URL = process.env.BASE_URL;
+// ===============================
+// VARIABLES DE ENTORNO
+// ===============================
+export const PORT =
+  process.env.PORT || 3000;
 
+export const MERCHANT_ID =
+  process.env.MERCHANT_ID;
+
+export const USER =
+  process.env.USER;
+
+export const PASSWORD =
+  process.env.PASSWORD;
+
+export const TERMINAL =
+  process.env.TERMINAL;
+
+export const BASE_URL =
+  process.env.BASE_URL;
+
+
+// ===============================
+// VALIDAR VARIABLES
+// ===============================
 function validateEnv() {
+
   const missing = [];
 
-  if (!MERCHANT_ID) missing.push("MERCHANT_ID");
-  if (!USER) missing.push("USER");
-  if (!PASSWORD) missing.push("PASSWORD");
-  if (!TERMINAL) missing.push("TERMINAL");
-  if (!BASE_URL) missing.push("BASE_URL");
+  if (!MERCHANT_ID)
+    missing.push("MERCHANT_ID");
 
+  if (!USER)
+    missing.push("USER");
+
+  if (!PASSWORD)
+    missing.push("PASSWORD");
+
+  if (!TERMINAL)
+    missing.push("TERMINAL");
+
+  if (!BASE_URL)
+    missing.push("BASE_URL");
+
+  // ===============================
+  // FALTANTES
+  // ===============================
   if (missing.length > 0) {
-    console.error("Faltan variables de entorno:");
-    missing.forEach(v => console.error(` - ${v}`));
+
+    console.error(
+      "\n Faltan variables de entorno:"
+    );
+
+    missing.forEach((v) =>
+      console.error(` - ${v}`)
+    );
+
     process.exit(1);
   }
 
-  if (!BASE_URL.startsWith("https://")) {
-    console.error("BASE_URL debe ser HTTPS");
+  // ===============================
+  // VALIDAR HTTPS
+  // ===============================
+  if (
+    typeof BASE_URL !== "string" ||
+    !BASE_URL.startsWith("https://")
+  ) {
+
+    console.error(
+      "\n BASE_URL debe usar HTTPS"
+    );
+
     process.exit(1);
   }
 
-  console.log("CONFIG OK:", {
+  // ===============================
+  // VALIDAR TERMINAL
+  // ===============================
+  if (!/^\d+$/.test(TERMINAL)) {
+
+    console.error(
+      "\n TERMINAL inválida"
+    );
+
+    process.exit(1);
+  }
+
+  // ===============================
+  // VALIDAR AFILIACIÓN
+  // ===============================
+  if (!/^\d+$/.test(MERCHANT_ID)) {
+
+    console.error(
+      "\n MERCHANT_ID inválido"
+    );
+
+    process.exit(1);
+  }
+
+  // ===============================
+  // CONFIG OK
+  // ===============================
+  console.log("\n CONFIG OK");
+
+  console.log({
     MERCHANT_ID,
     USER,
-    TERMINAL
+    TERMINAL,
+    BASE_URL
   });
 }
 
+
+// ===============================
+// EJECUTAR VALIDACIÓN
+// ===============================
 validateEnv();
