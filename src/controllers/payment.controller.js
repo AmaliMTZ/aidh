@@ -350,7 +350,7 @@ export const handle3DSecureResponse =
             TERMINAL,
 
           CMD_TRANS:
-            "SALE",
+            "VENTA",
 
           MODE:
             "AUT",
@@ -591,9 +591,7 @@ export const handlePayResponse = (
       controlNumber
     );
 
-    return res.redirect(
-      "https://TU_FRONTEND.com/pago-exitoso"
-    );
+   return res.redirect("/");
   }
 
   // ===============================
@@ -609,9 +607,31 @@ export const handlePayResponse = (
     controlNumber
   );
 
-  return res.redirect(
-    "https://TU_FRONTEND.com/pago-rechazado"
-  );
+  return res.send(`
+  <html>
+
+    <body style="
+      font-family: Arial;
+      text-align: center;
+      padding-top: 100px;
+    ">
+
+      <h1>
+        Pago rechazado
+      </h1>
+
+      <p>
+        ${data.TEXT || ""}
+      </p>
+
+      <a href="/">
+        Volver
+      </a>
+
+    </body>
+
+  </html>
+`);
 };
 
 
