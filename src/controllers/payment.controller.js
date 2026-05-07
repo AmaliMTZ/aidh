@@ -179,7 +179,7 @@ export const handle3DSecureResponse = async (req, res) => {
       ID_TERMINAL: TERMINAL,
 
       CMD_TRANS: "VENTA",
-      MODO: "AUT",
+      MODE: "AUT",
 
       MONTO: Number(order.amount).toFixed(2),
 
