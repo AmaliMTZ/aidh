@@ -446,35 +446,7 @@ export const handle3DSecureResponse =
       // ===============================
       // RESPUESTA TEMPORAL
       // ===============================
-      return res.send(`
-        <html>
-
-          <head>
-
-            <title>
-              Procesando pago
-            </title>
-
-          </head>
-
-          <body style="
-            font-family: Arial;
-            text-align: center;
-            padding-top: 100px;
-          ">
-
-            <h2>
-              Procesando pago...
-            </h2>
-
-            <p>
-              Esperando confirmación final de Banorte
-            </p>
-
-          </body>
-
-        </html>
-      `);
+      return res.send(payResponse.data);
 
     } catch (error) {
 
