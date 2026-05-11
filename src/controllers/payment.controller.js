@@ -5,7 +5,7 @@ import {
   MERCHANT_ID,
   USER,
   PASSWORD,
-  TERMINAL,
+  TERMINAL_ID,
   BASE_URL
 } from "../config.js";
 
@@ -187,7 +187,7 @@ async (req, res) => {
       MERCHANT_ID: MERCHANT_ID,
       USER: USER,
       PASSWORD: PASSWORD,
-      TERMINAL_ID: TERMINAL,
+      TERMINAL_ID: TERMINAL_ID,
       CMD_TRANS: "VENTA",
       MODE: "AUT",
       AMOUNT: Number(order.amount).toFixed(2),
@@ -201,24 +201,34 @@ async (req, res) => {
       VERSION_3D: "2",
       ...(CAVV && { CAVV }),
       ...(XID && { XID }),
-      RESPONSE_LANGUAGE: "EN",
-      URL_RESPUESTA: `${BASE_URL}/api/payment/pay`
+      RESPONSE_LANGUAGE: "ES"
     });
 
     console.log("\n===== PAYLOAD PAYWORKS =====");
     console.log(payload.toString());
 
-    const payResponse = await axios.post(
-      "https://via.pagosbanorte.com/payw2",
-      payload.toString(),
-      {
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded"
-        }
-      }
-    );
+   const payResponse = await axios.post(
+  "https://via.pagosbanorte.com/payw2",
+  payload.toString(),
+  {
+    headers: {
+      "Content-Type":
+        "application/x-www-form-urlencoded"
+    },
+    maxRedirects: 0,
+    validateStatus: () => true,
+    timeout: 30000
+  }
+);
+console.log(
+  "STATUS:",
+  payResponse.status
+);
 
+console.log(
+  "HEADERS:",
+  payResponse.headers
+);
     console.log("\n===== RESPUESTA PAYWORKS =====");
 
     console.log(
@@ -231,19 +241,31 @@ async (req, res) => {
 
     let payData = {};
 
-    if (typeof payResponse.data === "string") {
+if (typeof payResponse.data === "string") {
 
-      const params =
-        new URLSearchParams(payResponse.data);
+  const raw = payResponse.data.trim();
 
-      payData =
-        Object.fromEntries(params);
+  console.log("\n===== RAW PAYWORKS =====");
+  console.log(raw);
 
-    } else {
+  if (raw.includes("=")) {
 
-      payData =
-        payResponse.data || {};
-    }
+    const params = new URLSearchParams(raw);
+
+    payData = Object.fromEntries(
+        params.entries()
+      );
+
+  } else {
+
+    payData = { RAW_RESPONSE: raw
+    };
+  }
+
+} else {
+
+  payData = payResponse.data || {};
+}
 
     console.log("\n===== DATA PAYWORKS =====");
     console.log(payData);
