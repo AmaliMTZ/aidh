@@ -283,26 +283,85 @@ const approved =
 
     if (approved) {
 
-      console.log("\n===== PAGO APROBADO =====");
-      console.log({
-  resultado_payw:
-    headers["resultado_payw"],
+  console.log("\n===== PAGO APROBADO =====");
 
-  codigo_aut:
-    headers["codigo_aut"],
+  console.log({
+    resultado_payw:
+      headers["resultado_payw"],
 
-  texto:
-    headers["texto"],
+    codigo_aut:
+      headers["codigo_aut"],
 
-  referencia:
-    headers["referencia"]
-});
+    texto:
+      headers["texto"],
 
-      deleteOrder(REFERENCE3D);
+    referencia:
+      headers["referencia"]
+  });
 
-      return res.redirect("/");
-    }
+  const doc = new PDFDocument();
 
+  res.setHeader(
+    "Content-Type",
+    "application/pdf"
+  );
+
+  res.setHeader(
+    "Content-Disposition",
+    "inline; filename=comprobante.pdf"
+  );
+
+  doc.pipe(res);
+
+  doc
+    .fontSize(20)
+    .text(
+      "COMPROBANTE DE PAGO",
+      { align: "center" }
+    );
+
+  doc.moveDown();
+
+  doc
+    .fontSize(12)
+    .text(
+      `Monto: $${order.amount}`
+    );
+
+  doc.text(
+    `Autorización: ${
+      headers["codigo_aut"]
+    }`
+  );
+
+  doc.text(
+    `Referencia: ${
+      headers["referencia"]
+    }`
+  );
+
+  doc.text(
+    `Estado: APROBADO`
+  );
+
+  doc.text(
+    `Mensaje: ${
+      headers["texto"]
+    }`
+  );
+
+  doc.text(
+    `Fecha: ${
+      new Date().toLocaleString()
+    }`
+  );
+
+  doc.end();
+
+  deleteOrder(REFERENCE3D);
+
+  return;
+}
     console.log("\n===== PAGO RECHAZADO =====");
     console.log(payData);
 
