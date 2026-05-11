@@ -18,8 +18,8 @@ export const USER =
 export const PASSWORD =
   process.env.PASSWORD;
 
-export const TERMINAL =
-  process.env.TERMINAL;
+export const TERMINAL_ID =
+  process.env.TERMINAL_ID;
 
 export const BASE_URL =
   process.env.BASE_URL;
@@ -41,8 +41,8 @@ function validateEnv() {
   if (!PASSWORD)
     missing.push("PASSWORD");
 
-  if (!TERMINAL)
-    missing.push("TERMINAL");
+  if (!TERMINAL_ID)
+    missing.push("TERMINAL_ID");
 
   if (!BASE_URL)
     missing.push("BASE_URL");
@@ -81,10 +81,10 @@ function validateEnv() {
   // ===============================
   // VALIDAR TERMINAL
   // ===============================
-  if (!/^\d+$/.test(TERMINAL)) {
+  if (!/^\d+$/.test(TERMINAL_ID)) {
 
     console.error(
-      "\n TERMINAL inválida"
+      "\n TERMINAL_ID inválida"
     );
 
     process.exit(1);
@@ -110,7 +110,7 @@ function validateEnv() {
   console.log({
     MERCHANT_ID,
     USER,
-    TERMINAL,
+    TERMINAL_ID,
     BASE_URL
   });
 }
