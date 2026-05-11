@@ -189,7 +189,7 @@ async (req, res) => {
       PASSWORD: PASSWORD,
       TERMINAL_ID: TERMINAL_ID,
       CMD_TRANS: "VENTA",
-      MODE: "AUT",
+      MODE: "PRD",
       AMOUNT: Number(order.amount).toFixed(2),
       CARD_NUMBER: String(order.cardNumber),
       CARD_EXP: String(order.cardExp).replace("/", ""),
