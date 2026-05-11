@@ -270,16 +270,33 @@ if (typeof payResponse.data === "string") {
     console.log("\n===== DATA PAYWORKS =====");
     console.log(payData);
 
-    const approved =
-      payData.PAYW_RESULT === "A" ||
-      payData.RESULTADO_PAYW === "A" ||
-      payData.AUTH_CODE ||
-      payData.CODIGO_AUTORIZACION;
+    const headers = payResponse.headers;
+
+    console.log("\n===== HEADERS PAYWORKS =====");
+console.log(headers);
+    
+const approved =
+  headers["resultado_payw"] === "A" ||
+  headers["payw_result"] === "A" ||
+  headers["codigo_aut"] ||
+  headers["auth_code"];
 
     if (approved) {
 
       console.log("\n===== PAGO APROBADO =====");
-      console.log(payData);
+      console.log({
+  resultado_payw:
+    headers["resultado_payw"],
+
+  codigo_aut:
+    headers["codigo_aut"],
+
+  texto:
+    headers["texto"],
+
+  referencia:
+    headers["referencia"]
+});
 
       deleteOrder(REFERENCE3D);
 
@@ -469,12 +486,10 @@ export const generateReceipt = (
         }`
       );
 
-    doc.text(
-      `Monto: $${amount || "N/A"}`
+    doc.text(`Monto: $${amount || "N/A"}`
     );
 
-    doc.text(
-      `Estado: ${
+    doc.text(`Estado: ${
         status || "DESCONOCIDO"
       }`
     );
