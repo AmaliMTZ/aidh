@@ -70,6 +70,7 @@ export const start3DSecure = async (req, res) => {
       CARD_EXP: String(cardExp),
       AMOUNT: Number(amount).toFixed(2),
       CARD_TYPE: cardType,
+      CREDIT_TYPE: "CR",
       MERCHANT_ID: MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
       MERCHANT_CITY: "Saltillo",
