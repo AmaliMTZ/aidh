@@ -2,6 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
+
 <title>Pago Seguro</title>
 
 <meta
@@ -29,8 +35,10 @@ body {
   padding: 25px;
   border-radius: 15px;
   width: 360px;
+  max-width: calc(100% - 30px);
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
 }
 
 h2 {
@@ -99,6 +107,13 @@ button:disabled {
 #contenedorPlanPago {
   display: none;
 }
+
+.card-info {
+  min-height: 16px;
+  margin: 0 0 4px 2px;
+  font-size: 12px;
+  color: #6a1b9a;
+}
 </style>
 </head>
 
@@ -123,9 +138,11 @@ button:disabled {
 
     <input
       name="nombre"
+      type="text"
       placeholder="Nombre completo"
       required
       minlength="3"
+      maxlength="100"
     >
 
     <input
@@ -133,12 +150,16 @@ button:disabled {
       type="email"
       placeholder="Correo electrónico"
       required
+      maxlength="150"
     >
 
     <input
       name="telefono"
+      type="text"
       placeholder="Teléfono"
-      pattern="\d{10}"
+      maxlength="10"
+      pattern="[0-9]{10}"
+      title="El teléfono debe contener 10 dígitos"
       inputmode="numeric"
       required
     >
@@ -149,21 +170,29 @@ button:disabled {
 
     <input
       name="direccion"
+      type="text"
       placeholder="Dirección"
       required
       minlength="5"
+      maxlength="150"
     >
 
     <input
       name="ciudad"
+      type="text"
       placeholder="Ciudad"
       required
+      minlength="2"
+      maxlength="80"
     >
 
     <input
       name="cp"
+      type="text"
       placeholder="Código Postal"
-      pattern="\d{5}"
+      maxlength="5"
+      pattern="[0-9]{5}"
+      title="El código postal debe contener 5 dígitos"
       inputmode="numeric"
       required
     >
@@ -228,19 +257,30 @@ button:disabled {
     </div>
 
     <input
+      id="cardNumber"
       name="cardNumber"
+      type="text"
       placeholder="Número de tarjeta"
-      maxlength="19"
-      pattern="\d{15,19}"
+      maxlength="16"
+      pattern="[0-9]{15,16}"
+      title="Ingresa los 15 o 16 dígitos de la tarjeta"
       inputmode="numeric"
       required
     >
 
+    <div
+      id="cardInfo"
+      class="card-info"
+    ></div>
+
     <input
+      id="cardExp"
       name="cardExp"
+      type="text"
       placeholder="MM/AA"
       maxlength="5"
-      pattern="\d{2}/\d{2}"
+      pattern="(0[1-9]|1[0-2])/[0-9]{2}"
+      title="Ingresa una fecha válida en formato MM/AA"
       inputmode="numeric"
       required
     >
@@ -253,12 +293,14 @@ button:disabled {
         type="password"
         placeholder="CVV"
         maxlength="4"
-        pattern="\d{3,4}"
+        pattern="[0-9]{3,4}"
+        title="Ingresa el código de seguridad de la tarjeta"
         inputmode="numeric"
         required
       >
 
       <span
+        id="toggleCvv"
         class="toggle-cvv"
         onclick="toggleCVV()"
       >
@@ -268,6 +310,7 @@ button:disabled {
     </div>
 
     <input
+      id="amount"
       name="amount"
       type="number"
       min="1"
@@ -311,6 +354,12 @@ button:disabled {
 // ===============================
 // ELEMENTOS DEL FORMULARIO
 // ===============================
+
+const paymentForm =
+  document.getElementById(
+    "paymentForm"
+  );
+
 const tipoTarjeta =
   document.getElementById(
     "tipoTarjeta"
@@ -326,10 +375,41 @@ const contenedorPlanPago =
     "contenedorPlanPago"
   );
 
+const cardNumberInput =
+  document.getElementById(
+    "cardNumber"
+  );
+
+const cardExpInput =
+  document.getElementById(
+    "cardExp"
+  );
+
+const cvvInput =
+  document.getElementById(
+    "cvv"
+  );
+
+const cardInfo =
+  document.getElementById(
+    "cardInfo"
+  );
+
+const submitBtn =
+  document.getElementById(
+    "submitBtn"
+  );
+
+const loading =
+  document.getElementById(
+    "loading"
+  );
+
 
 // ===============================
 // MOSTRAR PLAN DE PAGO
 // ===============================
+
 function actualizarPlanPago() {
 
   if (tipoTarjeta.value === "CR") {
@@ -342,7 +422,7 @@ function actualizarPlanPago() {
   } else {
 
     // Débito:
-    // solamente pago de contado
+    // únicamente pago de contado
     contenedorPlanPago.style.display =
       "none";
 
@@ -359,20 +439,232 @@ actualizarPlanPago();
 
 
 // ===============================
+// IDENTIFICAR MARCA DE TARJETA
+// ===============================
+
+function detectarMarcaTarjeta(numero) {
+
+  const tarjeta =
+    String(numero)
+      .replace(/\D/g, "");
+
+  // American Express:
+  // comienza con 34 o 37
+  if (/^3[47]/.test(tarjeta)) {
+    return "AMEX";
+  }
+
+  // Visa:
+  // comienza con 4
+  if (/^4/.test(tarjeta)) {
+    return "VISA";
+  }
+
+  // Mastercard serie 51 a 55
+  const primerosDos =
+    Number(tarjeta.slice(0, 2));
+
+  if (
+    tarjeta.length >= 2 &&
+    primerosDos >= 51 &&
+    primerosDos <= 55
+  ) {
+    return "MC";
+  }
+
+  // Mastercard serie 2221 a 2720
+  const primerosCuatro =
+    Number(tarjeta.slice(0, 4));
+
+  if (
+    tarjeta.length >= 4 &&
+    primerosCuatro >= 2221 &&
+    primerosCuatro <= 2720
+  ) {
+    return "MC";
+  }
+
+  return "DESCONOCIDA";
+}
+
+
+// ===============================
+// ACTUALIZAR INFORMACIÓN DE MARCA
+// ===============================
+
+function actualizarMarcaTarjeta() {
+
+  const numero =
+    cardNumberInput.value;
+
+  const marca =
+    detectarMarcaTarjeta(numero);
+
+  if (!numero) {
+
+    cardInfo.textContent = "";
+
+    cvvInput.placeholder =
+      "CVV";
+
+    cvvInput.maxLength = 4;
+
+    cvvInput.pattern =
+      "[0-9]{3,4}";
+
+    return;
+  }
+
+  if (marca === "AMEX") {
+
+    cardInfo.textContent =
+      "American Express · 15 dígitos";
+
+    cvvInput.placeholder =
+      "CVV de 4 dígitos";
+
+    cvvInput.maxLength = 4;
+
+    cvvInput.pattern =
+      "[0-9]{4}";
+
+    cvvInput.title =
+      "American Express utiliza un CVV de 4 dígitos";
+
+    return;
+  }
+
+  if (marca === "VISA") {
+
+    cardInfo.textContent =
+      "Visa · 16 dígitos";
+
+    cvvInput.placeholder =
+      "CVV de 3 dígitos";
+
+    cvvInput.maxLength = 3;
+
+    cvvInput.pattern =
+      "[0-9]{3}";
+
+    cvvInput.title =
+      "Visa utiliza un CVV de 3 dígitos";
+
+    return;
+  }
+
+  if (marca === "MC") {
+
+    cardInfo.textContent =
+      "Mastercard · 16 dígitos";
+
+    cvvInput.placeholder =
+      "CVV de 3 dígitos";
+
+    cvvInput.maxLength = 3;
+
+    cvvInput.pattern =
+      "[0-9]{3}";
+
+    cvvInput.title =
+      "Mastercard utiliza un CVV de 3 dígitos";
+
+    return;
+  }
+
+  cardInfo.textContent =
+    "Marca de tarjeta no reconocida";
+
+  cvvInput.placeholder =
+    "CVV";
+
+  cvvInput.maxLength = 4;
+
+  cvvInput.pattern =
+    "[0-9]{3,4}";
+}
+
+
+// ===============================
+// VALIDAR FECHA DE VENCIMIENTO
+// ===============================
+
+function fechaTarjetaValida(fecha) {
+
+  const formato =
+    /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+
+  const coincidencia =
+    fecha.match(formato);
+
+  if (!coincidencia) {
+    return false;
+  }
+
+  const mes =
+    Number(coincidencia[1]);
+
+  const anio =
+    2000 + Number(coincidencia[2]);
+
+  const ahora =
+    new Date();
+
+  const mesActual =
+    ahora.getMonth() + 1;
+
+  const anioActual =
+    ahora.getFullYear();
+
+  if (anio < anioActual) {
+    return false;
+  }
+
+  if (
+    anio === anioActual &&
+    mes < mesActual
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+
+// ===============================
 // VALIDACIÓN GENERAL
 // ===============================
+
 function validarForm() {
 
   const monto =
-    document.querySelector(
-      '[name="amount"]'
-    ).value;
+    Number(
+      document.getElementById(
+        "amount"
+      ).value
+    );
 
   const tipo =
     tipoTarjeta.value;
 
   const modalidad =
     planPago.value;
+
+  const numeroTarjeta =
+    cardNumberInput.value
+      .replace(/\D/g, "");
+
+  const marca =
+    detectarMarcaTarjeta(
+      numeroTarjeta
+    );
+
+  const cvv =
+    cvvInput.value
+      .replace(/\D/g, "");
+
+  const fecha =
+    cardExpInput.value;
 
   const modalidadesPermitidas = [
     "contado",
@@ -382,25 +674,35 @@ function validarForm() {
     "12"
   ];
 
-  if (Number(monto) <= 0) {
+  // Validar monto
+  if (
+    !Number.isFinite(monto) ||
+    monto <= 0
+  ) {
 
-    alert("Monto inválido");
+    alert(
+      "Ingresa un monto válido"
+    );
 
     return false;
   }
 
+  // Validar tipo de tarjeta
   if (
     tipo !== "CR" &&
     tipo !== "DB"
   ) {
 
     alert(
-      "Selecciona el tipo de tarjeta"
+      "Selecciona si la tarjeta es de crédito o débito"
     );
+
+    tipoTarjeta.focus();
 
     return false;
   }
 
+  // Validar modalidad
   if (
     !modalidadesPermitidas.includes(
       modalidad
@@ -414,6 +716,7 @@ function validarForm() {
     return false;
   }
 
+  // Débito solo puede ser contado
   if (
     tipo === "DB" &&
     modalidad !== "contado"
@@ -423,18 +726,114 @@ function validarForm() {
       "La tarjeta de débito solo permite pago de contado"
     );
 
-    planPago.value = "contado";
+    planPago.value =
+      "contado";
 
     return false;
   }
 
-  document
-    .getElementById("submitBtn")
-    .disabled = true;
+  // Validar marca
+  if (
+    marca === "DESCONOCIDA"
+  ) {
 
-  document
-    .getElementById("loading")
-    .style.display = "block";
+    alert(
+      "Solo se aceptan tarjetas Visa, Mastercard o American Express"
+    );
+
+    cardNumberInput.focus();
+
+    return false;
+  }
+
+  // Validar American Express
+  if (
+    marca === "AMEX" &&
+    numeroTarjeta.length !== 15
+  ) {
+
+    alert(
+      "American Express debe contener 15 dígitos"
+    );
+
+    cardNumberInput.focus();
+
+    return false;
+  }
+
+  // Validar Visa y Mastercard
+  if (
+    (
+      marca === "VISA" ||
+      marca === "MC"
+    ) &&
+    numeroTarjeta.length !== 16
+  ) {
+
+    alert(
+      "Visa y Mastercard deben contener 16 dígitos"
+    );
+
+    cardNumberInput.focus();
+
+    return false;
+  }
+
+  // Validar CVV American Express
+  if (
+    marca === "AMEX" &&
+    cvv.length !== 4
+  ) {
+
+    alert(
+      "El CVV de American Express debe contener 4 dígitos"
+    );
+
+    cvvInput.focus();
+
+    return false;
+  }
+
+  // Validar CVV Visa y Mastercard
+  if (
+    (
+      marca === "VISA" ||
+      marca === "MC"
+    ) &&
+    cvv.length !== 3
+  ) {
+
+    alert(
+      "El CVV de Visa y Mastercard debe contener 3 dígitos"
+    );
+
+    cvvInput.focus();
+
+    return false;
+  }
+
+  // Validar fecha de vencimiento
+  if (
+    !fechaTarjetaValida(fecha)
+  ) {
+
+    alert(
+      "La fecha de vencimiento no es válida o la tarjeta ya venció"
+    );
+
+    cardExpInput.focus();
+
+    return false;
+  }
+
+  submitBtn.disabled =
+    true;
+
+  submitBtn.textContent =
+    "Procesando...";
+
+  loading.style.display =
+    "block";
 
   return true;
 }
@@ -443,97 +842,168 @@ function validarForm() {
 // ===============================
 // MOSTRAR / OCULTAR CVV
 // ===============================
+
 function toggleCVV() {
 
-  const cvv =
-    document.getElementById("cvv");
+  const toggle =
+    document.getElementById(
+      "toggleCvv"
+    );
 
-  cvv.type =
-    cvv.type === "password"
-      ? "text"
-      : "password";
+  if (
+    cvvInput.type === "password"
+  ) {
+
+    cvvInput.type =
+      "text";
+
+    toggle.textContent =
+      "Ocultar";
+
+  } else {
+
+    cvvInput.type =
+      "password";
+
+    toggle.textContent =
+      "Ver";
+  }
 }
 
 
 // ===============================
 // FORMATO MM/AA
 // ===============================
-document
-  .querySelector('[name="cardExp"]')
-  .addEventListener("input", e => {
 
-    let val =
+cardExpInput.addEventListener(
+  "input",
+  e => {
+
+    let valor =
       e.target.value
-        .replace(/\D/g, "");
+        .replace(/\D/g, "")
+        .slice(0, 4);
 
-    val = val.slice(0, 4);
+    if (valor.length >= 3) {
 
-    if (val.length >= 3) {
-
-      val =
-        val.slice(0, 2) +
+      valor =
+        valor.slice(0, 2) +
         "/" +
-        val.slice(2);
+        valor.slice(2);
     }
 
-    e.target.value = val;
-  });
+    e.target.value =
+      valor;
+  }
+);
 
 
 // ===============================
 // SOLO NÚMEROS TARJETA
 // ===============================
-document
-  .querySelector('[name="cardNumber"]')
-  .addEventListener("input", e => {
+
+cardNumberInput.addEventListener(
+  "input",
+  e => {
 
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0, 19);
-  });
+        .slice(0, 16);
+
+    actualizarMarcaTarjeta();
+
+    // Evitar que permanezca un CVV
+    // de 4 dígitos al cambiar a Visa
+    // o Mastercard.
+    if (
+      cvvInput.value.length >
+      cvvInput.maxLength
+    ) {
+
+      cvvInput.value =
+        cvvInput.value.slice(
+          0,
+          cvvInput.maxLength
+        );
+    }
+  }
+);
 
 
 // ===============================
 // SOLO NÚMEROS CVV
 // ===============================
-document
-  .querySelector('[name="cvv"]')
-  .addEventListener("input", e => {
+
+cvvInput.addEventListener(
+  "input",
+  e => {
 
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0, 4);
-  });
+        .slice(
+          0,
+          cvvInput.maxLength
+        );
+  }
+);
 
 
 // ===============================
 // SOLO NÚMEROS TELÉFONO
 // ===============================
+
 document
   .querySelector('[name="telefono"]')
-  .addEventListener("input", e => {
+  .addEventListener(
+    "input",
+    e => {
 
-    e.target.value =
-      e.target.value
-        .replace(/\D/g, "")
-        .slice(0, 10);
-  });
+      e.target.value =
+        e.target.value
+          .replace(/\D/g, "")
+          .slice(0, 10);
+    }
+  );
 
 
 // ===============================
 // SOLO NÚMEROS CP
 // ===============================
+
 document
   .querySelector('[name="cp"]')
-  .addEventListener("input", e => {
+  .addEventListener(
+    "input",
+    e => {
 
-    e.target.value =
-      e.target.value
-        .replace(/\D/g, "")
-        .slice(0, 5);
-  });
+      e.target.value =
+        e.target.value
+          .replace(/\D/g, "")
+          .slice(0, 5);
+    }
+  );
+
+
+// ===============================
+// RESTABLECER BOTÓN AL REGRESAR
+// ===============================
+
+window.addEventListener(
+  "pageshow",
+  () => {
+
+    submitBtn.disabled =
+      false;
+
+    submitBtn.textContent =
+      "Pagar";
+
+    loading.style.display =
+      "none";
+  }
+);
 
 </script>
 
