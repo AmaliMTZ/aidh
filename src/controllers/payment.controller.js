@@ -15,45 +15,25 @@ import {
   deleteOrder
 } from "../services/order.service.js";
 
-
 // ===============================
-// CONFIGURACIÓN
-// ===============================
-const PLANES_PERMITIDOS = [
-  "contado",
-  "03",
-  "06",
-  "09",
-  "12"
-];
-
-const PLANES_SIN_INTERESES = [
-  "03",
-  "06",
-  "09",
-  "12"
-];
-
-const TIPOS_TARJETA_PERMITIDOS = [
-  "CR",
-  "DB"
-];
-
-
-// ===============================
-// DETECTAR MARCA DE TARJETA
+// DETECTAR TARJETA
 // ===============================
 const getCardType = (cardNumber) => {
-
-  const number =
-    String(cardNumber || "")
-      .replace(/\D/g, "");
+  const number = String(cardNumber || "")
+    .replace(/\D/g, "");
 
   if (/^4/.test(number)) {
     return "VISA";
   }
 
-  if (/^5[1-5]/.test(number)) {
+  if (
+    /^5[1-5]/.test(number) ||
+    (
+      number.length >= 4 &&
+      Number(number.slice(0, 4)) >= 2221 &&
+      Number(number.slice(0, 4)) <= 2720
+    )
+  ) {
     return "MC";
   }
 
@@ -61,131 +41,14 @@ const getCardType = (cardNumber) => {
     return "AMEX";
   }
 
-  // Se conserva VISA como valor por defecto,
-  // igual que en tu implementación anterior.
-  return "VISA";
+  return null;
 };
 
-
 // ===============================
-// OCULTAR NÚMERO DE TARJETA EN LOGS
+// 1. INICIO 3D
 // ===============================
-const maskCardNumber = (cardNumber) => {
-
-  const number =
-    String(cardNumber || "")
-      .replace(/\D/g, "");
-
-  if (number.length < 4) {
-    return "****";
-  }
-
-  return `************${number.slice(-4)}`;
-};
-
-
-// ===============================
-// NORMALIZAR FECHA MM/AA
-// ===============================
-const normalizeCardExpiration = (
-  cardExp
-) => {
-
-  return String(cardExp || "")
-    .replace(/\D/g, "")
-    .slice(0, 4);
-};
-
-
-// ===============================
-// VALIDAR FECHA DE EXPIRACIÓN
-// ===============================
-const isValidExpiration = (
-  cardExp
-) => {
-
-  const expiration =
-    normalizeCardExpiration(cardExp);
-
-  if (!/^\d{4}$/.test(expiration)) {
-    return false;
-  }
-
-  const month =
-    Number(expiration.slice(0, 2));
-
-  const year =
-    Number(expiration.slice(2, 4));
-
-  if (
-    month < 1 ||
-    month > 12
-  ) {
-    return false;
-  }
-
-  const now =
-    new Date();
-
-  const currentMonth =
-    now.getMonth() + 1;
-
-  const currentYear =
-    now.getFullYear() % 100;
-
-  if (year < currentYear) {
-    return false;
-  }
-
-  if (
-    year === currentYear &&
-    month < currentMonth
-  ) {
-    return false;
-  }
-
-  return true;
-};
-
-
-// ===============================
-// VALIDAR MONTO
-// ===============================
-const isValidAmount = (amount) => {
-
-  const numericAmount =
-    Number(amount);
-
-  return (
-    Number.isFinite(numericAmount) &&
-    numericAmount > 0 &&
-    numericAmount <= 9999999.99
-  );
-};
-
-
-// ===============================
-// ESCAPAR TEXTO PARA HTML
-// ===============================
-const escapeHtml = (value) => {
-
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-};
-
-
-// ===============================
-// 1. INICIO 3D SECURE
-// ===============================
-export const start3DSecure =
-async (req, res) => {
-
+export const start3DSecure = async (req, res) => {
   try {
-
     const {
       cardNumber,
       cardExp,
@@ -202,207 +65,79 @@ async (req, res) => {
     } = req.body || {};
 
     // ===============================
-    // NORMALIZAR DATOS
+    // VALIDAR DATOS OBLIGATORIOS
     // ===============================
-    const cleanCardNumber =
-      String(cardNumber || "")
-        .replace(/\D/g, "");
+    if (
+      !cardNumber ||
+      !cardExp ||
+      !cvv ||
+      !amount ||
+      !tipoTarjeta ||
+      !planPago
+    ) {
+      return res
+        .status(400)
+        .send("Datos incompletos");
+    }
 
-    const cleanCardExp =
-      normalizeCardExpiration(
-        cardExp
-      );
-
-    const cleanCvv =
-      String(cvv || "")
-        .replace(/\D/g, "");
-
+    // ===============================
+    // NORMALIZAR TIPO DE TARJETA
+    // ===============================
     const cleanTipoTarjeta =
-      String(tipoTarjeta || "")
+      String(tipoTarjeta)
         .trim()
         .toUpperCase();
 
+    // ===============================
+    // NORMALIZAR PLAN DE PAGO
+    // ===============================
     const cleanPlanPago =
-      String(planPago || "")
+      String(planPago)
         .trim()
         .toLowerCase();
 
-    const cleanNombre =
-      String(nombre || "")
-        .trim();
+    const tiposPermitidos = [
+      "CR",
+      "DB"
+    ];
 
-    const cleanCorreo =
-      String(correo || "")
-        .trim();
-
-    const cleanTelefono =
-      String(telefono || "")
-        .replace(/\D/g, "");
-
-    const cleanDireccion =
-      String(direccion || "")
-        .trim();
-
-    const cleanCiudad =
-      String(ciudad || "")
-        .trim();
-
-    const cleanCp =
-      String(cp || "")
-        .replace(/\D/g, "");
+    const planesPermitidos = [
+      "contado",
+      "03",
+      "06",
+      "09",
+      "12"
+    ];
 
     // ===============================
-    // VALIDAR CAMPOS OBLIGATORIOS
+    // VALIDAR CRÉDITO O DÉBITO
     // ===============================
     if (
-      !cleanCardNumber ||
-      !cleanCardExp ||
-      !cleanCvv ||
-      !amount ||
-      !cleanNombre ||
-      !cleanCorreo ||
-      !cleanTelefono ||
-      !cleanDireccion ||
-      !cleanCiudad ||
-      !cleanCp ||
-      !cleanTipoTarjeta ||
-      !cleanPlanPago
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Faltan datos obligatorios"
-        );
-    }
-
-    // ===============================
-    // VALIDAR TARJETA
-    // ===============================
-    if (
-      !/^\d{15,19}$/.test(
-        cleanCardNumber
+      !tiposPermitidos.includes(
+        cleanTipoTarjeta
       )
     ) {
       return res
         .status(400)
-        .send(
-          "Número de tarjeta inválido"
-        );
-    }
-
-    if (
-      !isValidExpiration(
-        cleanCardExp
-      )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Fecha de vencimiento inválida"
-        );
-    }
-
-    if (
-      !/^\d{3,4}$/.test(
-        cleanCvv
-      )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Código de seguridad inválido"
-        );
-    }
-
-    if (!isValidAmount(amount)) {
-      return res
-        .status(400)
-        .send(
-          "Monto inválido"
-        );
-    }
-
-    // ===============================
-    // VALIDAR DATOS PERSONALES
-    // ===============================
-    if (
-      cleanNombre.length < 3
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Nombre inválido"
-        );
-    }
-
-    if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        cleanCorreo
-      )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Correo electrónico inválido"
-        );
-    }
-
-    if (
-      !/^\d{10}$/.test(
-        cleanTelefono
-      )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Teléfono inválido"
-        );
-    }
-
-    if (
-      !/^\d{5}$/.test(
-        cleanCp
-      )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Código postal inválido"
-        );
-    }
-
-    // ===============================
-    // VALIDAR TIPO DE TARJETA
-    // ===============================
-    if (
-      !TIPOS_TARJETA_PERMITIDOS
-        .includes(
-          cleanTipoTarjeta
-        )
-    ) {
-      return res
-        .status(400)
-        .send(
-          "Tipo de tarjeta inválido"
-        );
+        .send("Tipo de tarjeta inválido");
     }
 
     // ===============================
     // VALIDAR PLAN DE PAGO
     // ===============================
     if (
-      !PLANES_PERMITIDOS.includes(
+      !planesPermitidos.includes(
         cleanPlanPago
       )
     ) {
       return res
         .status(400)
-        .send(
-          "Modalidad de pago inválida"
-        );
+        .send("Modalidad de pago inválida");
     }
 
-    // Débito solamente permite contado.
+    // ===============================
+    // DÉBITO SOLO DE CONTADO
+    // ===============================
     if (
       cleanTipoTarjeta === "DB" &&
       cleanPlanPago !== "contado"
@@ -414,115 +149,132 @@ async (req, res) => {
         );
     }
 
-    const esPagoDiferido =
-      cleanTipoTarjeta === "CR" &&
-      PLANES_SIN_INTERESES
-        .includes(
-          cleanPlanPago
-        );
+    // ===============================
+    // LIMPIAR NÚMERO DE TARJETA
+    // ===============================
+    const cleanCardNumber =
+      String(cardNumber)
+        .replace(/\D/g, "");
+
+    const cardType =
+      getCardType(cleanCardNumber);
 
     // ===============================
-    // REFERENCIA DE LA ORDEN
+    // VALIDAR MARCA
+    // ===============================
+    if (!cardType) {
+      return res
+        .status(400)
+        .send(
+          "Solo se aceptan tarjetas Visa, Mastercard y American Express"
+        );
+    }
+
+    // ===============================
+    // VALIDAR AMERICAN EXPRESS
+    // ===============================
+    if (
+      cardType === "AMEX" &&
+      cleanCardNumber.length !== 15
+    ) {
+      return res
+        .status(400)
+        .send(
+          "American Express debe tener 15 dígitos"
+        );
+    }
+
+    // ===============================
+    // VALIDAR VISA Y MASTERCARD
+    // ===============================
+    if (
+      ["VISA", "MC"].includes(cardType) &&
+      cleanCardNumber.length !== 16
+    ) {
+      return res
+        .status(400)
+        .send(
+          "Visa y Mastercard deben tener 16 dígitos"
+        );
+    }
+
+    // ===============================
+    // LIMPIAR CVV
+    // ===============================
+    const cleanCvv =
+      String(cvv)
+        .replace(/\D/g, "");
+
+    // ===============================
+    // CVV AMERICAN EXPRESS
+    // ===============================
+    if (
+      cardType === "AMEX" &&
+      !/^\d{4}$/.test(cleanCvv)
+    ) {
+      return res
+        .status(400)
+        .send(
+          "El código de seguridad de American Express debe tener 4 dígitos"
+        );
+    }
+
+    // ===============================
+    // CVV VISA Y MASTERCARD
+    // ===============================
+    if (
+      ["VISA", "MC"].includes(cardType) &&
+      !/^\d{3}$/.test(cleanCvv)
+    ) {
+      return res
+        .status(400)
+        .send(
+          "El código de seguridad debe tener 3 dígitos"
+        );
+    }
+
+    // ===============================
+    // CREAR REFERENCIA
     // ===============================
     const reference3D =
       `ORD${Date.now()}`;
 
-    const cardType =
-      getCardType(
-        cleanCardNumber
-      );
-
-    const nameParts =
-      cleanNombre
-        .split(/\s+/);
-
-    const firstName =
-      nameParts.shift() || "NA";
+    // ===============================
+    // SEPARAR NOMBRE Y APELLIDO
+    // ===============================
+    const [firstName, ...rest] =
+      (nombre || "")
+        .trim()
+        .split(" ");
 
     const lastName =
-      nameParts.join(" ") || "NA";
+      rest.join(" ") || "NA";
 
     // ===============================
     // GUARDAR ORDEN TEMPORAL
     // ===============================
-    createOrder(
-      reference3D,
-      {
-        reference3D,
-
-        cardNumber:
-          cleanCardNumber,
-
-        cardExp:
-          cleanCardExp,
-
-        cvv:
-          cleanCvv,
-
-        amount:
-          Number(amount)
-            .toFixed(2),
-
-        cardType,
-
-        tipoTarjeta:
-          cleanTipoTarjeta,
-
-        planPago:
-          cleanPlanPago,
-
-        initialDeferment:
-          esPagoDiferido
-            ? "00"
-            : null,
-
-        paymentsNumber:
-          esPagoDiferido
-            ? cleanPlanPago
-            : null,
-
-        planType:
-          esPagoDiferido
-            ? "03"
-            : null,
-
-        nombre:
-          cleanNombre,
-
-        correo:
-          cleanCorreo,
-
-        telefono:
-          cleanTelefono,
-
-        direccion:
-          cleanDireccion,
-
-        ciudad:
-          cleanCiudad,
-
-        cp:
-          cleanCp,
-
-        createdAt:
-          new Date().toISOString()
-      }
-    );
+    createOrder(reference3D, {
+      cardNumber: cleanCardNumber,
+      cardExp,
+      cvv: cleanCvv,
+      amount,
+      cardType,
+      tipoTarjeta: cleanTipoTarjeta,
+      planPago: cleanPlanPago
+    });
 
     // ===============================
-    // PAYLOAD DE 3D SECURE
+    // PAYLOAD 3D SECURE
     // ===============================
     const payload =
       new URLSearchParams({
-        CARD_NUMBER:
-          cleanCardNumber,
+        CARD_NUMBER: cleanCardNumber,
 
         CARD_EXP:
-          cleanCardExp,
+          String(cardExp),
 
         AMOUNT:
-          Number(amount)
-            .toFixed(2),
+          Number(amount).toFixed(2),
 
         CARD_TYPE:
           cardType,
@@ -558,45 +310,43 @@ async (req, res) => {
           lastName,
 
         EMAIL:
-          cleanCorreo,
+          correo || "",
 
         CITY:
-          cleanCiudad,
+          ciudad || "",
 
         COUNTRY:
           "MX",
 
         POSTAL_CODE:
-          cleanCp,
+          cp || "",
 
         STREET:
-          cleanDireccion,
+          direccion || "",
 
         MOBILE_PHONE:
-          cleanTelefono
+          telefono || ""
       });
 
-    // No imprimir el PAN completo ni CVV.
+    // No imprimir número de tarjeta ni CVV
     console.log(
       "\n===== REQUEST 3D ====="
     );
 
     console.log({
       reference3D,
-      cardNumber:
-        maskCardNumber(
-          cleanCardNumber
-        ),
       cardType,
-      creditType:
+      tipoTarjeta:
         cleanTipoTarjeta,
       planPago:
         cleanPlanPago,
       amount:
-        Number(amount)
-          .toFixed(2)
+        Number(amount).toFixed(2)
     });
 
+    // ===============================
+    // ENVIAR A BANORTE 3D SECURE
+    // ===============================
     const response =
       await axios.post(
         "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
@@ -605,23 +355,19 @@ async (req, res) => {
           headers: {
             "Content-Type":
               "application/x-www-form-urlencoded"
-          },
-
-          timeout:
-            30000
+          }
         }
       );
 
     console.log(
-      "\n===== RESPONSE 3D RECIBIDA ====="
+      "\n===== RESPONSE 3D ====="
     );
 
-    return res.send(
-      response.data
-    );
+    console.log(response.data);
+
+    return res.send(response.data);
 
   } catch (error) {
-
     console.error(
       "\n===== ERROR 3D ====="
     );
@@ -633,27 +379,22 @@ async (req, res) => {
 
     return res
       .status(500)
-      .send(
-        "Error en 3D Secure"
-      );
+      .send("Error en 3D Secure");
   }
 };
-
-
 // ===============================
-// 2. RESPUESTA 3D SECURE
+// 2. RESPUESTA 3D
 // ===============================
 export const handle3DSecureResponse =
 async (req, res) => {
-
   try {
-
     console.log(
       "\n===== RESPUESTA 3D ====="
     );
 
-    const data =
-      req.body || {};
+    console.log(req.body);
+
+    const data = req.body || {};
 
     const Status =
       data.Status ||
@@ -665,131 +406,95 @@ async (req, res) => {
       data.REFERENCE3D ||
       data.REFERENCIA3D;
 
-    const ECI =
-      data.ECI || "";
+    const ECI = data.ECI;
+    const CAVV = data.CAVV;
+    const XID = data.XID;
 
-    const CAVV =
-      data.CAVV || "";
-
-    const XID =
-      data.XID || "";
+    console.log(
+      "\n===== DATOS 3D ====="
+    );
 
     console.log({
       Status,
       REFERENCE3D,
       ECI,
-      hasCAVV:
-        Boolean(CAVV),
-      hasXID:
-        Boolean(XID)
+      CAVV,
+      XID
     });
 
     // ===============================
-    // VALIDAR REFERENCIA
+    // VALIDAR RESPUESTA 3D
     // ===============================
-    if (!REFERENCE3D) {
-      return res
-        .status(400)
-        .send(`
-          <h1>Respuesta inválida</h1>
-          <p>No se recibió la referencia 3D.</p>
-        `);
+    if (String(Status) !== "200") {
+      console.log("3D FALLIDO");
+
+      if (REFERENCE3D) {
+        deleteOrder(REFERENCE3D);
+      }
+
+      return res.send(`
+        <h1>3D Secure Fallido</h1>
+        <p>Status: ${Status}</p>
+      `);
     }
 
     // ===============================
-    // VALIDAR RESULTADO 3D
+    // VALIDAR ECI
     // ===============================
+    const eciPermitidos = [
+      "01",
+      "02",
+      "05",
+      "06",
+      "07"
+    ];
+
     if (
-      String(Status) !== "200"
+      !eciPermitidos.includes(
+        String(ECI || "")
+      )
     ) {
+      if (REFERENCE3D) {
+        deleteOrder(REFERENCE3D);
+      }
 
-      console.log(
-        "3D SECURE FALLIDO"
-      );
-
-      deleteOrder(
-        REFERENCE3D
-      );
-
-      return res.send(`
+      return res.status(400).send(`
         <html>
           <body style="
             font-family: Arial;
             text-align: center;
             padding-top: 100px;
           ">
-            <h1>Validación 3D Secure fallida</h1>
-
+            <h1>Respuesta 3D inválida</h1>
             <p>
-              No fue posible autenticar la tarjeta.
+              No se recibió un ECI válido.
             </p>
-
-            <p>
-              Estado:
-              ${escapeHtml(Status)}
-            </p>
-
-            <a href="/">
-              Volver
-            </a>
+            <a href="/">Volver</a>
           </body>
         </html>
       `);
     }
 
     // ===============================
-    // RECUPERAR ORDEN
+    // OBTENER ORDEN
     // ===============================
     const order =
-      getOrder(
-        REFERENCE3D
-      );
-
-    if (!order) {
-      return res
-        .status(404)
-        .send(`
-          <html>
-            <body style="
-              font-family: Arial;
-              text-align: center;
-              padding-top: 100px;
-            ">
-              <h1>Orden no encontrada</h1>
-
-              <p>
-                La orden expiró o ya fue procesada.
-              </p>
-
-              <a href="/">
-                Volver
-              </a>
-            </body>
-          </html>
-        `);
-    }
+      getOrder(REFERENCE3D);
 
     console.log(
-      "\n===== ORDEN RECUPERADA ====="
+      "\n===== ORDEN ====="
     );
 
-    console.log({
-      reference3D:
-        order.reference3D,
-      cardNumber:
-        maskCardNumber(
-          order.cardNumber
-        ),
-      amount:
-        order.amount,
-      tipoTarjeta:
-        order.tipoTarjeta,
-      planPago:
-        order.planPago
-    });
+    console.log(order);
+
+    if (!order) {
+      return res.send(`
+        <h1>Orden no encontrada</h1>
+      `);
+    }
 
     // ===============================
-    // PAYLOAD BASE PAYWORKS
+    // DATOS BASE PARA PAYWORKS
     // ===============================
     const payworksData = {
       MERCHANT_ID:
@@ -811,16 +516,14 @@ async (req, res) => {
         "PRD",
 
       AMOUNT:
-        Number(order.amount)
-          .toFixed(2),
+        Number(order.amount).toFixed(2),
 
       CARD_NUMBER:
         String(order.cardNumber),
 
       CARD_EXP:
-        normalizeCardExpiration(
-          order.cardExp
-        ),
+        String(order.cardExp)
+          .replace(/\D/g, ""),
 
       SECURITY_CODE:
         String(order.cvv),
@@ -829,64 +532,62 @@ async (req, res) => {
         "MANUAL",
 
       CONTROL_NUMBER:
-        String(REFERENCE3D)
-          .trim(),
+        String(REFERENCE3D).trim(),
 
       STATUS_3D:
         String(Status),
 
       ECI:
-        String(ECI || ""),
+        String(ECI),
 
       VERSION_3D:
         "2",
-
-      CREDIT_TYPE:
-        order.tipoTarjeta,
 
       RESPONSE_LANGUAGE:
         "ES"
     };
 
     // ===============================
-    // DATOS DE AUTENTICACIÓN 3D
+    // AGREGAR CAVV Y XID
+    // SOLO SI FUERON RECIBIDOS
     // ===============================
     if (CAVV) {
-      payworksData.CAVV =
-        CAVV;
+      payworksData.CAVV = CAVV;
     }
 
     if (XID) {
-      payworksData.XID =
-        XID;
+      payworksData.XID = XID;
     }
 
     // ===============================
-    // PAGOS DIFERIDOS
+    // PLANES A MESES SIN INTERESES
     // ===============================
+    const planesSinIntereses = [
+      "03",
+      "06",
+      "09",
+      "12"
+    ];
+
     const esPagoDiferido =
       order.tipoTarjeta === "CR" &&
-      PLANES_SIN_INTERESES
-        .includes(
-          order.planPago
-        );
+      planesSinIntereses.includes(
+        order.planPago
+      );
 
+    // ===============================
+    // AGREGAR VARIABLES MSI
+    // SOLO PARA CRÉDITO
+    // ===============================
     if (esPagoDiferido) {
+      payworksData.INITIAL_DEFERMENT =
+        "00";
 
-      // Meses antes del primer pago.
-      payworksData
-        .INITIAL_DEFERMENT =
-          "00";
+      payworksData.PAYMENTS_NUMBER =
+        order.planPago;
 
-      // 03, 06, 09 o 12.
-      payworksData
-        .PAYMENTS_NUMBER =
-          order.planPago;
-
-      // 03 = plan sin intereses.
-      payworksData
-        .PLAN_TYPE =
-          "03";
+      payworksData.PLAN_TYPE =
+        "03";
     }
 
     const payload =
@@ -894,49 +595,31 @@ async (req, res) => {
         payworksData
       );
 
-    // No imprimir credenciales, PAN o CVV.
+    // No mostrar PAN ni CVV en consola
     console.log(
       "\n===== PAYLOAD PAYWORKS ====="
     );
 
     console.log({
       CONTROL_NUMBER:
-        payworksData
-          .CONTROL_NUMBER,
+        payworksData.CONTROL_NUMBER,
 
       AMOUNT:
         payworksData.AMOUNT,
 
-      CARD_NUMBER:
-        maskCardNumber(
-          order.cardNumber
-        ),
+      tipoTarjeta:
+        order.tipoTarjeta,
 
-      CREDIT_TYPE:
-        payworksData
-          .CREDIT_TYPE,
+      planPago:
+        order.planPago,
+
+      esPagoDiferido,
 
       STATUS_3D:
-        payworksData
-          .STATUS_3D,
+        payworksData.STATUS_3D,
 
       ECI:
-        payworksData.ECI,
-
-      INITIAL_DEFERMENT:
-        payworksData
-          .INITIAL_DEFERMENT ||
-        "NO APLICA",
-
-      PAYMENTS_NUMBER:
-        payworksData
-          .PAYMENTS_NUMBER ||
-        "NO APLICA",
-
-      PLAN_TYPE:
-        payworksData
-          .PLAN_TYPE ||
-        "NO APLICA"
+        payworksData.ECI
     });
 
     // ===============================
@@ -952,28 +635,41 @@ async (req, res) => {
               "application/x-www-form-urlencoded"
           },
 
-          maxRedirects:
-            0,
+          maxRedirects: 0,
 
-          validateStatus:
-            () => true,
+          validateStatus: () => true,
 
-          timeout:
-            30000
+          timeout: 30000
         }
       );
+
+    console.log(
+      "STATUS:",
+      payResponse.status
+    );
+
+    console.log(
+      "HEADERS:",
+      payResponse.headers
+    );
 
     console.log(
       "\n===== RESPUESTA PAYWORKS ====="
     );
 
     console.log(
-      "STATUS HTTP:",
-      payResponse.status
+      "Tipo:",
+      typeof payResponse.data
+    );
+
+    console.log("Contenido:");
+
+    console.log(
+      payResponse.data
     );
 
     // ===============================
-    // PROCESAR RESPUESTA
+    // PROCESAR RESPUESTA PAYWORKS
     // ===============================
     let payData = {};
 
@@ -981,12 +677,16 @@ async (req, res) => {
       typeof payResponse.data ===
       "string"
     ) {
-
       const raw =
         payResponse.data.trim();
 
-      if (raw.includes("=")) {
+      console.log(
+        "\n===== RAW PAYWORKS ====="
+      );
 
+      console.log(raw);
+
+      if (raw.includes("=")) {
         const params =
           new URLSearchParams(raw);
 
@@ -994,116 +694,81 @@ async (req, res) => {
           Object.fromEntries(
             params.entries()
           );
-
       } else {
-
         payData = {
-          RAW_RESPONSE:
-            raw
+          RAW_RESPONSE: raw
         };
       }
-
     } else {
-
       payData =
         payResponse.data || {};
     }
 
-    const headers =
-      payResponse.headers || {};
-
     console.log(
-      "\n===== RESULTADO PAYWORKS ====="
+      "\n===== DATA PAYWORKS ====="
     );
 
-    console.log({
-      resultado:
-        headers[
-          "resultado_payw"
-        ] ||
-        headers[
-          "payw_result"
-        ] ||
-        payData.RESULTADO_PAYW ||
-        payData.PAYW_RESULT,
+    console.log(payData);
 
-      authorization:
-        headers[
-          "codigo_aut"
-        ] ||
-        headers[
-          "auth_code"
-        ] ||
-        payData.CODIGO_AUT ||
-        payData.AUTH_CODE,
+    const headers =
+      payResponse.headers;
 
-      texto:
-        headers.texto ||
-        payData.TEXTO ||
-        payData.TEXT,
+    console.log(
+      "\n===== HEADERS PAYWORKS ====="
+    );
 
-      referencia:
-        headers.referencia ||
-        payData.REFERENCIA ||
-        payData.REFERENCE
-    });
+    console.log(headers);
 
     // ===============================
-    // VALIDAR APROBACIÓN
+    // OBTENER RESULTADO Y AUTORIZACIÓN
     // ===============================
     const resultCode =
-      headers[
-        "resultado_payw"
-      ] ||
-      headers[
-        "payw_result"
-      ] ||
+      headers["resultado_payw"] ||
+      headers["payw_result"] ||
       payData.RESULTADO_PAYW ||
       payData.PAYW_RESULT;
 
     const authorizationCode =
-      headers[
-        "codigo_aut"
-      ] ||
-      headers[
-        "auth_code"
-      ] ||
+      headers["codigo_aut"] ||
+      headers["auth_code"] ||
       payData.CODIGO_AUT ||
       payData.AUTH_CODE ||
       payData.CODIGO_AUTORIZACION;
 
     const approved =
       String(resultCode || "")
-        .toUpperCase() === "A" ||
-      Boolean(
-        authorizationCode
-      );
+        .trim()
+        .toUpperCase() === "A";
 
     // ===============================
     // PAGO APROBADO
     // ===============================
     if (approved) {
-
       console.log(
         "\n===== PAGO APROBADO ====="
       );
 
-      const reference =
-        headers.referencia ||
-        payData.REFERENCIA ||
-        payData.REFERENCE ||
-        REFERENCE3D;
+      console.log({
+        resultado_payw:
+          resultCode,
 
-      const message =
-        headers.texto ||
-        payData.TEXTO ||
-        payData.TEXT ||
-        "Transacción aprobada";
+        codigo_aut:
+          authorizationCode,
+
+        texto:
+          headers["texto"] ||
+          payData.TEXTO ||
+          payData.TEXT,
+
+        referencia:
+          headers["referencia"] ||
+          payData.REFERENCIA ||
+          payData.REFERENCE ||
+          REFERENCE3D
+      });
 
       const doc =
-        new PDFDocument({
-          margin: 50
-        });
+        new PDFDocument();
 
       res.setHeader(
         "Content-Type",
@@ -1122,8 +787,7 @@ async (req, res) => {
         .text(
           "COMPROBANTE DE PAGO",
           {
-            align:
-              "center"
+            align: "center"
           }
         );
 
@@ -1146,16 +810,15 @@ async (req, res) => {
 
       doc.text(
         `Referencia: ${
-          reference
+          headers["referencia"] ||
+          payData.REFERENCIA ||
+          payData.REFERENCE ||
+          REFERENCE3D
         }`
       );
 
       doc.text(
         "Estado: APROBADO"
-      );
-
-      doc.text(
-        `Mensaje: ${message}`
       );
 
       doc.text(
@@ -1166,37 +829,29 @@ async (req, res) => {
         }`
       );
 
-      if (esPagoDiferido) {
-
-        doc.text(
-          `Modalidad: ${
-            Number(
-              order.planPago
-            )
-          } meses sin intereses`
-        );
-
-      } else {
-
-        doc.text(
-          "Modalidad: Pago de contado"
-        );
-      }
+      doc.text(
+        `Modalidad: ${
+          esPagoDiferido
+            ? `${Number(
+                order.planPago
+              )} meses sin intereses`
+            : "Pago de contado"
+        }`
+      );
 
       doc.text(
-        `Tarjeta: ${
-          maskCardNumber(
-            order.cardNumber
-          )
+        `Mensaje: ${
+          headers["texto"] ||
+          payData.TEXTO ||
+          payData.TEXT ||
+          "Transacción aprobada"
         }`
       );
 
       doc.text(
         `Fecha: ${
           new Date()
-            .toLocaleString(
-              "es-MX"
-            )
+            .toLocaleString()
         }`
       );
 
@@ -1216,16 +871,11 @@ async (req, res) => {
       "\n===== PAGO RECHAZADO ====="
     );
 
+    console.log(payData);
+
     deleteOrder(
       REFERENCE3D
     );
-
-    const rejectMessage =
-      headers.texto ||
-      payData.TEXTO ||
-      payData.TEXT ||
-      payData.RAW_RESPONSE ||
-      "La transacción no fue autorizada";
 
     return res.send(`
       <html>
@@ -1236,21 +886,18 @@ async (req, res) => {
         ">
           <h1>Pago rechazado</h1>
 
-          <p>
-            ${escapeHtml(
-              rejectMessage
-            )}
-          </p>
-
-          <a href="/">
-            Volver
-          </a>
+          <pre>
+${JSON.stringify(
+  payData,
+  null,
+  2
+)}
+          </pre>
         </body>
       </html>
     `);
 
   } catch (error) {
-
     console.error(
       "\n===== ERROR PAYWORKS ====="
     );
@@ -1260,33 +907,12 @@ async (req, res) => {
       error.message
     );
 
-    return res
-      .status(500)
-      .send(`
-        <html>
-          <body style="
-            font-family: Arial;
-            text-align: center;
-            padding-top: 100px;
-          ">
-            <h1>Error procesando el pago</h1>
-
-            <p>
-              No fue posible completar la operación.
-            </p>
-
-            <a href="/">
-              Volver
-            </a>
-          </body>
-        </html>
-      `);
+    return res.send(`
+      <h1>Error procesando pago</h1>
+    `);
   }
 };
-
-
-// ===============================
-// 3. CALLBACK FINAL DE BANORTE
+// 3. CALLBACK FINAL
 // ===============================
 export const handlePayResponse = (
   req,
@@ -1302,35 +928,37 @@ export const handlePayResponse = (
     req.originalUrl
   );
 
+  console.log(
+    "BODY:",
+    req.body
+  );
+
   let data = {};
 
-  if (
-    typeof req.body === "string"
-  ) {
+  if (typeof req.body === "string") {
 
     const params =
-      new URLSearchParams(
-        req.body
-      );
+      new URLSearchParams(req.body);
 
     data =
-      Object.fromEntries(
-        params.entries()
-      );
+      Object.fromEntries(params);
 
   } else {
 
-    data =
-      req.body || {};
+    data = req.body || {};
   }
 
-  const approved =
-    data.PAYW_RESULT === "A" ||
-    data.RESULTADO_PAYW === "A" ||
-    Boolean(
-      data.AUTH_CODE ||
-      data.CODIGO_AUTORIZACION
-    );
+  console.log("\n===== DATA =====");
+  console.log(data);
+
+  const resultCode =
+  data.PAYW_RESULT ||
+  data.RESULTADO_PAYW;
+
+const approved =
+  String(resultCode || "")
+    .trim()
+    .toUpperCase() === "A";
 
   const controlNumber =
     data.CONTROL_NUMBER ||
@@ -1343,20 +971,13 @@ export const handlePayResponse = (
       "\n===== PAGO APROBADO ====="
     );
 
-    console.log({
-      controlNumber,
-      authorization:
-        data.AUTH_CODE ||
-        data.CODIGO_AUTORIZACION
-    });
+    console.log(
+  "AUTH:",
+  data.AUTH_CODE ||
+  data.CODIGO_AUTORIZACION
+);
 
-    if (
-      controlNumber !== "N/A"
-    ) {
-      deleteOrder(
-        controlNumber
-      );
-    }
+    deleteOrder(controlNumber);
 
     return res.redirect("/");
   }
@@ -1365,13 +986,9 @@ export const handlePayResponse = (
     "\n===== PAGO RECHAZADO ====="
   );
 
-  if (
-    controlNumber !== "N/A"
-  ) {
-    deleteOrder(
-      controlNumber
-    );
-  }
+  console.log(data);
+
+  deleteOrder(controlNumber);
 
   return res.send(`
     <html>
@@ -1383,24 +1000,20 @@ export const handlePayResponse = (
         <h1>Pago rechazado</h1>
 
         <p>
-          ${escapeHtml(
-            data.TEXT ||
-            data.TEXTO ||
-            "La transacción no fue autorizada"
-          )}
+          ${data.TEXT || ""}
         </p>
 
         <a href="/">
           Volver
         </a>
+
       </body>
     </html>
   `);
 };
 
-
 // ===============================
-// 4. GENERAR PDF MANUAL
+// 4. PDF
 // ===============================
 export const generateReceipt = (
   req,
@@ -1412,15 +1025,10 @@ export const generateReceipt = (
     const {
       amount,
       reference,
-      status,
-      tipoTarjeta,
-      planPago
-    } = req.body || {};
+      status
+    } = req.body;
 
-    const doc =
-      new PDFDocument({
-        margin: 50
-      });
+    const doc = new PDFDocument();
 
     res.setHeader(
       "Content-Type",
@@ -1438,10 +1046,7 @@ export const generateReceipt = (
       .fontSize(20)
       .text(
         "RECIBO DE PAGO",
-        {
-          align:
-            "center"
-        }
+        { align: "center" }
       );
 
     doc.moveDown();
@@ -1454,66 +1059,23 @@ export const generateReceipt = (
         }`
       );
 
-    doc.text(
-      `Monto: $${
-        amount || "N/A"
+    doc.text(`Monto: $${amount || "N/A"}`
+    );
+
+    doc.text(`Estado: ${
+        status || "DESCONOCIDO"
       }`
     );
 
     doc.text(
-      `Estado: ${
-        status ||
-        "DESCONOCIDO"
-      }`
-    );
-
-    if (tipoTarjeta) {
-
-      doc.text(
-        `Tipo de tarjeta: ${
-          tipoTarjeta === "DB"
-            ? "Débito"
-            : "Crédito"
-        }`
-      );
-    }
-
-    if (
-      PLANES_SIN_INTERESES
-        .includes(
-          String(planPago)
-        )
-    ) {
-
-      doc.text(
-        `Modalidad: ${
-          Number(planPago)
-        } meses sin intereses`
-      );
-
-    } else {
-
-      doc.text(
-        "Modalidad: Pago de contado"
-      );
-    }
-
-    doc.text(
-      `Fecha: ${
-        new Date()
-          .toLocaleString(
-            "es-MX"
-          )
-      }`
+      `Fecha: ${new Date().toLocaleString()}`
     );
 
     doc.end();
 
   } catch (error) {
 
-    console.error(
-      error
-    );
+    console.error(error);
 
     return res
       .status(500)
