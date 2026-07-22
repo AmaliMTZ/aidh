@@ -41,7 +41,8 @@ export const start3DSecure = async (req, res) => {
       telefono,
       direccion,
       ciudad,
-      cp
+      cp,
+      PAYMENTS_NUMBER
     } = req.body;
 
     if (!cardNumber || !cardExp || !cvv || !amount) {
@@ -62,7 +63,8 @@ export const start3DSecure = async (req, res) => {
       cardExp,
       cvv,
       amount,
-      cardType
+      cardType,
+      PAYMENTS_NUMBER
     });
 
     const payload = new URLSearchParams({
@@ -205,6 +207,25 @@ async (req, res) => {
       RESPONSE_LANGUAGE: "ES"
     });
 
+    if (
+  order.PAYMENTS_NUMBER === "06" ||
+  order.PAYMENTS_NUMBER === "12"
+) {
+  payload.append(
+    "INITIAL_DEFERMENT",
+    "00"
+  );
+
+  payload.append(
+    "PAYMENTS_NUMBER",
+    order.PAYMENTS_NUMBER
+  );
+
+  payload.append(
+    "PLAN_TYPE",
+    "03"
+  );
+}
     console.log("\n===== PAYLOAD PAYWORKS =====");
     console.log(payload.toString());
 
