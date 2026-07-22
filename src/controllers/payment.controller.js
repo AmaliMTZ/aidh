@@ -321,64 +321,194 @@ const approved =
       headers["referencia"]
   });
 
-  const doc = new PDFDocument();
+      const doc = new PDFDocument({
+  size: "LETTER",
+  margins: {
+    top: 50,
+    bottom: 50,
+    left: 55,
+    right: 55
+  }
+});
 
-  res.setHeader(
-    "Content-Type",
-    "application/pdf"
+res.setHeader(
+  "Content-Type",
+  "application/pdf"
+);
+
+res.setHeader(
+  "Content-Disposition",
+  "inline; filename=comprobante.pdf"
+);
+
+doc.pipe(res);
+
+// ===============================
+// ENCABEZADO
+// ===============================
+doc
+  .font("Helvetica-Bold")
+  .fontSize(22)
+  .text(
+    "COMPROBANTE DE PAGO",
+    { align: "center" }
   );
 
-  res.setHeader(
-    "Content-Disposition",
-    "inline; filename=comprobante.pdf"
+doc.moveDown(0.4);
+
+doc
+  .font("Helvetica")
+  .fontSize(11)
+  .text(
+    "Academia Interamericana",
+    { align: "center" }
   );
 
-  doc.pipe(res);
+doc.moveDown(1.5);
 
-  doc
-    .fontSize(20)
-    .text(
-      "COMPROBANTE DE PAGO",
-      { align: "center" }
-    );
+// Línea divisoria
+doc
+  .moveTo(55, doc.y)
+  .lineTo(557, doc.y)
+  .stroke();
 
-  doc.moveDown();
+doc.moveDown(1.5);
 
-  doc
-    .fontSize(12)
-    .text(
-      `Monto: $${order.amount}`
-    );
-
-  doc.text(
-    `Autorización: ${
-      headers["codigo_aut"]
-    }`
+// ===============================
+// ESTADO DEL PAGO
+// ===============================
+doc
+  .font("Helvetica-Bold")
+  .fontSize(16)
+  .text(
+    "PAGO APROBADO",
+    { align: "center" }
   );
 
-  doc.text(
-    `Referencia: ${
-      headers["referencia"]
-    }`
+doc.moveDown(1.5);
+
+// ===============================
+// INFORMACIÓN DEL PAGO
+// ===============================
+doc
+  .font("Helvetica-Bold")
+  .fontSize(12)
+  .text("Detalles de la operación");
+
+doc.moveDown(0.8);
+
+doc
+  .font("Helvetica")
+  .fontSize(11);
+
+doc.text(
+  `Monto: $${Number(order.amount).toFixed(2)} MXN`
+);
+
+doc.moveDown(0.5);
+
+doc.text(
+  `Número de autorización: ${
+    headers["codigo_aut"] || "N/A"
+  }`
+);
+
+doc.moveDown(0.5);
+
+doc.text(
+  `Referencia: ${
+    headers["referencia"] || REFERENCE3D
+  }`
+);
+
+doc.moveDown(0.5);
+
+doc.text(
+  "Estado: Aprobado"
+);
+
+doc.moveDown(0.5);
+
+doc.text(
+  `Mensaje: ${
+    headers["texto"] || "Operación aprobada"
+  }`
+);
+
+doc.moveDown(0.5);
+
+doc.text(
+  `Fecha y hora: ${
+    new Date().toLocaleString("es-MX")
+  }`
+);
+
+// ===============================
+// MODALIDAD DE PAGO
+// ===============================
+doc.moveDown(1.2);
+
+doc
+  .font("Helvetica-Bold")
+  .text("Modalidad de pago:");
+
+doc
+  .font("Helvetica");
+
+if (order.PAYMENTS_NUMBER === "06") {
+  doc.text("6 meses sin intereses");
+} else if (order.PAYMENTS_NUMBER === "12") {
+  doc.text("12 meses sin intereses");
+} else {
+  doc.text("Pago de contado");
+}
+
+// ===============================
+// AVISO
+// ===============================
+doc.moveDown(2);
+
+doc
+  .moveTo(55, doc.y)
+  .lineTo(557, doc.y)
+  .stroke();
+
+doc.moveDown(1);
+
+doc
+  .font("Helvetica-Bold")
+  .fontSize(10)
+  .text(
+    "AVISO IMPORTANTE",
+    { align: "center" }
   );
 
-  doc.text(
-    `Estado: APROBADO`
+doc.moveDown(0.5);
+
+doc
+  .font("Helvetica")
+  .fontSize(9)
+  .text(
+    "Este comprobante es únicamente informativo y no constituye un documento oficial, factura, recibo fiscal ni comprobante fiscal digital. Para cualquier aclaración, conserve el número de autorización y la referencia de la operación.",
+    {
+      align: "justify",
+      lineGap: 3
+    }
   );
 
-  doc.text(
-    `Mensaje: ${
-      headers["texto"]
-    }`
+// ===============================
+// PIE DE PÁGINA
+// ===============================
+doc.moveDown(2);
+
+doc
+  .fontSize(8)
+  .text(
+    "Documento generado electrónicamente.",
+    { align: "center" }
   );
 
-  doc.text(
-    `Fecha: ${
-      new Date().toLocaleString()
-    }`
-  );
-
-  doc.end();
+doc.end();
 
   deleteOrder(REFERENCE3D);
 
