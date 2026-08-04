@@ -32,22 +32,33 @@ export const start3DSecure = async (req, res) => {
   try {
 
     const {
-      cardNumber,
-      cardExp,
-      cvv,
-      amount,
-      nombre,
-      correo,
-      telefono,
-      direccion,
-      ciudad,
-      cp,
-      PAYMENTS_NUMBER
-    } = req.body;
+  cardNumber,
+  cardExp,
+  cvv,
+  amount,
+  nombre,
+  correo,
+  telefono,
+  direccion,
+  ciudad,
+  cp,
+  PAYMENTS_NUMBER
+} = req.body;
 
     if (!cardNumber || !cardExp || !cvv || !amount) {
       return res.status(400).send("Datos incompletos");
     }
+const paymentMonths =
+  String(PAYMENTS_NUMBER || "").trim();
+
+    if (
+  paymentMonths !== "" &&
+  !["06", "12"].includes(paymentMonths)
+) {
+  return res
+    .status(400)
+    .send("Modalidad de pago inválida");
+}
 
     const reference3D = `ORD${Date.now()}`;
     const cardType = getCardType(cardNumber);
@@ -58,18 +69,14 @@ export const start3DSecure = async (req, res) => {
     const lastName =
       rest.join(" ") || "NA";
 
-    const paymentMonths = 
-      String(PAYMENTS_NUMBER || "").trim();
-
     createOrder(reference3D, {
-      cardNumber,
-      cardExp,
-      cvv,
-      amount,
-      cardType,
-      PAYMENTS_NUMBER: paymentMonths
-    });
-
+  cardNumber,
+  cardExp,
+  cvv,
+  amount,
+  cardType,
+  PAYMENTS_NUMBER: paymentMonths
+});
     const payload = new URLSearchParams({
       CARD_NUMBER: String(cardNumber),
       CARD_EXP: String(cardExp),
