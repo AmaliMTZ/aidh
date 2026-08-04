@@ -158,9 +158,10 @@ button:disabled {
     </div>
 
     <select
-      name="tipoTarjeta"
-      required
-    >
+  id="tipoTarjeta"
+  name="tipoTarjeta"
+  required
+>
       <option value="">
         Selecciona
       </option>
@@ -168,22 +169,20 @@ button:disabled {
       <option value="CR">
         Crédito
       </option>
-
-      <option value="DB">
-        Débito
-      </option>
-    </select>
+      </select>
 
     <div class="section-title">
   Modalidad de pago
 </div>
 
 <select
+  id="paymentsNumber"
   name="PAYMENTS_NUMBER"
+  required
 >
-  <option value="00">
-    Contado
-  </option>
+  <option value="">
+  Contado
+</option>
 
   <option value="06">
     6 meses sin intereses
@@ -285,27 +284,42 @@ function validarForm() {
       '[name="amount"]'
     ).value;
 
+  const tipoTarjeta =
+    document
+      .getElementById("tipoTarjeta")
+      .value;
+
+  const paymentsNumber =
+    document
+      .getElementById("paymentsNumber")
+      .value;
+
   if (Number(monto) <= 0) {
-
     alert("Monto inválido");
-
     return false;
   }
 
-  // ✅ DESHABILITAR BOTÓN
+  if (
+    (paymentsNumber === "06" ||
+     paymentsNumber === "12") &&
+    tipoTarjeta !== "CR"
+  ) {
+    alert(
+      "Los meses sin intereses solo están disponibles con tarjeta de crédito."
+    );
+    return false;
+  }
+
   document
     .getElementById("submitBtn")
     .disabled = true;
 
-  // ✅ MOSTRAR LOADING
   document
     .getElementById("loading")
     .style.display = "block";
 
   return true;
 }
-
-
 // ===============================
 // MOSTRAR / OCULTAR CVV
 // ===============================
