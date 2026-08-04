@@ -58,13 +58,16 @@ export const start3DSecure = async (req, res) => {
     const lastName =
       rest.join(" ") || "NA";
 
+    const paymentMonths = 
+      String(PAYMENTS_NUMBER || "").trim();
+
     createOrder(reference3D, {
       cardNumber,
       cardExp,
       cvv,
       amount,
       cardType,
-      PAYMENTS_NUMBER
+      PAYMENTS_NUMBER: paymentMonths
     });
 
     const payload = new URLSearchParams({
@@ -91,7 +94,12 @@ export const start3DSecure = async (req, res) => {
     });
 
     console.log("\n===== REQUEST 3D =====");
-    console.log(payload.toString());
+    console.log({
+  reference3D,
+  amount,
+  cardType,
+  cardEnding: cardNumber.slice(-4)
+});
 
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
@@ -207,9 +215,12 @@ async (req, res) => {
       RESPONSE_LANGUAGE: "ES"
     });
 
-    if (
-  order.PAYMENTS_NUMBER === "06" ||
-  order.PAYMENTS_NUMBER === "12"
+    const plazosMSI = ["06", "12"];
+
+if (
+  plazosMSI.includes(
+    order.PAYMENTS_NUMBER
+  )
 ) {
   payload.append(
     "INITIAL_DEFERMENT",
@@ -226,8 +237,16 @@ async (req, res) => {
     "03"
   );
 }
+
     console.log("\n===== PAYLOAD PAYWORKS =====");
-    console.log(payload.toString());
+
+console.log({
+  controlNumber: REFERENCE3D,
+  amount: Number(order.amount).toFixed(2),
+  cardType: order.cardType,
+  cardEnding: String(order.cardNumber).slice(-4),
+  paymentsNumber: order.PAYMENTS_NUMBER || "CONTADO"
+});
 
    const payResponse = await axios.post(
   "https://via.pagosbanorte.com/payw2",
@@ -242,85 +261,91 @@ async (req, res) => {
     timeout: 30000
   }
 );
+
+    console.log("HEADERS:", payResponse.headers);
+console.log("DATA:", payResponse.data);
+    
+console.log("\n===== RESPUESTA PAYWORKS =====");
+
 console.log(
-  "STATUS:",
+  "HTTP STATUS:",
   payResponse.status
 );
 
-console.log(
-  "HEADERS:",
-  payResponse.headers
-);
-    console.log("\n===== RESPUESTA PAYWORKS =====");
+const headers =
+  payResponse.headers || {};
 
-    console.log(
-      "Tipo:",
-      typeof payResponse.data
+const resultadoPayworks =
+  headers["resultado_payw"] ||
+  headers["payw_result"] ||
+  "";
+
+const codigoPayworks =
+  headers["codigo_payw"] ||
+  headers["payw_code"] ||
+  "";
+
+const codigoAutorizacion =
+  headers["codigo_aut"] ||
+  headers["auth_code"] ||
+  "";
+
+const referenciaBanco =
+  headers["referencia"] ||
+  headers["reference"] ||
+  REFERENCE3D;
+
+const numeroControl =
+  headers["numero_control"] ||
+  REFERENCE3D;
+
+const textoCodificado =
+  headers["texto"] ||
+  headers["text"] ||
+  "";
+
+let textoRespuesta = "";
+
+try {
+  textoRespuesta =
+    decodeURIComponent(
+      String(textoCodificado)
+        .replace(/\+/g, " ")
     );
-
-    console.log("Contenido:");
-    console.log(payResponse.data);
-
-    let payData = {};
-
-if (typeof payResponse.data === "string") {
-
-  const raw = payResponse.data.trim();
-
-  console.log("\n===== RAW PAYWORKS =====");
-  console.log(raw);
-
-  if (raw.includes("=")) {
-
-    const params = new URLSearchParams(raw);
-
-    payData = Object.fromEntries(
-        params.entries()
-      );
-
-  } else {
-
-    payData = { RAW_RESPONSE: raw
-    };
-  }
-
-} else {
-
-  payData = payResponse.data || {};
+} catch {
+  textoRespuesta =
+    String(textoCodificado);
 }
 
-    console.log("\n===== DATA PAYWORKS =====");
-    console.log(payData);
+console.log({
+  resultado: resultadoPayworks,
+  codigo: codigoPayworks,
+  texto: textoRespuesta,
+  numeroControl,
+  codigoAutorizacion,
+  referenciaBanco
+});
 
-    const headers = payResponse.headers;
-
-    console.log("\n===== HEADERS PAYWORKS =====");
-console.log(headers);
-    
 const approved =
-  headers["resultado_payw"] === "A" ||
-  headers["payw_result"] === "A" ||
-  headers["codigo_aut"] ||
-  headers["auth_code"];
+  resultadoPayworks === "A";
 
-    if (approved) {
+if (approved) {
 
   console.log("\n===== PAGO APROBADO =====");
 
   console.log({
     resultado_payw:
-      headers["resultado_payw"],
+      resultadoPayworks,
 
     codigo_aut:
-      headers["codigo_aut"],
+      codigoAutorizacion,
 
     texto:
-      headers["texto"],
+      textoRespuesta,
 
     referencia:
-      headers["referencia"]
+      referenciaBanco
   });
-
       const doc = new PDFDocument({
   size: "LETTER",
   margins: {
@@ -409,7 +434,7 @@ doc.moveDown(0.5);
 
 doc.text(
   `Número de autorización: ${
-    headers["codigo_aut"] || "N/A"
+    codigoAutorizacion || "N/A"
   }`
 );
 
@@ -417,7 +442,7 @@ doc.moveDown(0.5);
 
 doc.text(
   `Referencia: ${
-    headers["referencia"] || REFERENCE3D
+    referenciaBanco
   }`
 );
 
@@ -431,7 +456,7 @@ doc.moveDown(0.5);
 
 doc.text(
   `Mensaje: ${
-    headers["texto"] || "Operación aprobada"
+    textoRespuesta || "Operación aprobada"
   }`
 );
 
@@ -514,27 +539,56 @@ doc.end();
 
   return;
 }
-    console.log("\n===== PAGO RECHAZADO =====");
-    console.log(payData);
+   console.log("\n===== PAGO RECHAZADO =====");
 
-    deleteOrder(REFERENCE3D);
+console.log({
+  resultado: resultadoPayworks,
+  codigo: codigoPayworks,
+  texto: textoRespuesta,
+  numeroControl
+});
 
-    return res.send(`
-      <html>
-        <body style="
-          font-family: Arial;
-          text-align: center;
-          padding-top: 100px;
-        ">
-          <h1>Pago rechazado</h1>
+deleteOrder(REFERENCE3D);
 
-          <pre>
-${JSON.stringify(payData, null, 2)}
-          </pre>
+return res.send(`
+  <!DOCTYPE html>
+  <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Pago rechazado</title>
+    </head>
 
-        </body>
-      </html>
-    `);
+    <body style="
+      font-family: Arial;
+      text-align: center;
+      padding: 80px 20px;
+    ">
+      <h1>Pago rechazado</h1>
+
+      <p>
+        <strong>Código:</strong>
+        ${codigoPayworks || "Sin código"}
+      </p>
+
+      <p>
+        <strong>Motivo:</strong>
+        ${
+          textoRespuesta ||
+          "La operación fue rechazada por el banco"
+        }
+      </p>
+
+      <p>
+        <strong>Número de control:</strong>
+        ${numeroControl}
+      </p>
+
+      <a href="/">
+        Volver
+      </a>
+    </body>
+  </html>
+`);
 
   } catch (error) {
 
