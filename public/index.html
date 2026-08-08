@@ -104,24 +104,8 @@ button:disabled {
     target="_self"
   >
 
-    <div class="section-title">
-      Datos personales
-    </div>
-
-    <input
-      name="nombre"
-      placeholder="Nombre completo"
-      required
-      minlength="3"
-    >
-
-    <input
-      name="correo"
-      type="email"
-      placeholder="Correo electrónico"
-      required
-    >
-
+</select>
+    
     <input
       name="telefono"
       placeholder="Teléfono"
@@ -154,29 +138,29 @@ button:disabled {
     >
 
     <div class="section-title">
-      Tipo de tarjeta
-    </div>
+  Tipo de tarjeta
+</div>
 
-    <select
+<select
   id="tipoTarjeta"
   name="tipoTarjeta"
   required
 >
-      <option value="">
-        Selecciona
-      </option>
+  <option value="" selected disabled>
+    Selecciona
+  </option>
 
-      <option value="CR">
-        Crédito
-      </option>
-      </select>
+  <option value="CR">
+    Crédito
+  </option>
 
-     <option value="DB">
+  <option value="DB">
     Débito
   </option>
 </select>
 
-    <div class="section-title">
+
+<div class="section-title">
   Modalidad de pago
 </div>
 
@@ -185,9 +169,13 @@ button:disabled {
   name="PAYMENTS_NUMBER"
   required
 >
-  <option value="CONTADO" selected>
-  Contado
-    </option>
+  <option value="" selected disabled>
+    Selecciona modalidad de pago
+  </option>
+
+  <option value="CONTADO">
+    Contado - 1 sola exhibición
+  </option>
 
   <option value="06">
     6 meses sin intereses
@@ -198,9 +186,10 @@ button:disabled {
   </option>
 </select>
 
-    <div class="section-title">
-      Datos de la tarjeta
-    </div>
+
+<div class="section-title">
+  Datos de la tarjeta
+</div>
 
     <input
       name="cardNumber"
