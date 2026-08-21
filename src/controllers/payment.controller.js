@@ -19,10 +19,38 @@ import {
 // DETECTAR TARJETA
 // ===============================
 const getCardType = (cardNumber) => {
-  if (/^4/.test(cardNumber)) return "VISA";
-  if (/^5[1-5]/.test(cardNumber)) return "MC";
-  if (/^3[47]/.test(cardNumber)) return "AMEX";
-  return "VISA";
+
+  const card =
+    String(cardNumber)
+      .replace(/\D/g, "");
+
+  // VISA
+  if (/^4/.test(card)) {
+    return "VISA";
+  }
+
+  // MASTERCARD 51 - 55
+  if (/^5[1-5]/.test(card)) {
+    return "MC";
+  }
+
+  // MASTERCARD 2221 - 2720
+  const first4 =
+    Number(card.slice(0, 4));
+
+  if (
+    first4 >= 2221 &&
+    first4 <= 2720
+  ) {
+    return "MC";
+  }
+
+  // AMERICAN EXPRESS
+  if (/^3[47]/.test(card)) {
+    return "AMEX";
+  }
+
+  return null;
 };
 
 // ===============================
@@ -41,36 +69,143 @@ export const start3DSecure = async (req, res) => {
       telefono,
       direccion,
       ciudad,
-      cp
+      cp,
+      tipoTarjeta,
+      planPago
     } = req.body;
 
-    if (!cardNumber || !cardExp || !cvv || !amount) {
-      return res.status(400).send("Datos incompletos");
+    if ( !cardNumber || !cardExp || !cvv || !amount || !nombre || !correo ||
+  !telefono || !direccion || !ciudad || !cp || !tipoTarjeta || !planPago ) {
+  return res.status(400).send("Datos incompletos");
+}
+    const tiposPermitidos = [
+  "CR",
+  "DB"
+];
+
+const planesPermitidos = [
+  "contado",
+  "06",
+  "12"
+];
+
+if (!tiposPermitidos.includes(tipoTarjeta)) {
+  return res
+    .status(400)
+    .send("Tipo de tarjeta inválido");
+}
+
+if (!planesPermitidos.includes(planPago)) {
+  return res
+    .status(400)
+    .send("Plan de pago inválido");
+}
+
+if (
+  tipoTarjeta === "DB" &&
+  planPago !== "contado"
+) {
+  return res
+    .status(400)
+    .send(
+      "Las tarjetas de débito solo permiten pago de contado"
+    );
+}
+
+    const reference3D = `ORD${Date.now().toString().slice(-12)}`;
+    const cardDigits = String(cardNumber).replace(/\D/g, "");
+    const cardType = getCardType(cardDigits);
+    if (!cardType) {
+      return res.status(400).send("Marca de tarjeta no reconocida");
     }
+    // ===============================
+// VALIDAR LONGITUD DE TARJETA
+// ===============================
+if (
+  cardType === "AMEX" &&
+  cardDigits.length !== 15
+) {
+  return res.status(400).send( "La tarjeta AMEX debe tener 15 dígitos" );
+}
+if (( cardType === "VISA" || cardType === "MC" ) && cardDigits.length !== 16
+) {
+  return res.status(400).send("La tarjeta debe tener 16 dígitos");
+}
 
-    const reference3D = `ORD${Date.now()}`;
-    const cardType = getCardType(cardNumber);
+// VALIDAR CVV
+const cvvDigits = String(cvv).replace(/\D/g, "");
+if ( cardType === "AMEX" && !/^\d{4}$/.test(cvvDigits)
+) {
+  return res.status(400).send("CVV de AMEX inválido"
+    );
+}
+    if (cardType !== "AMEX" && !/^\d{3}$/.test(cvvDigits)
+) {
+return res.status(400).send( "CVV inválido");
+}
+    
+// VALIDAR FECHA DE EXPIRACIÓN
+const expMatch = String(cardExp).match( /^(\d{2})\/(\d{2})$/
+  );
+if (!expMatch) {
+  return res.status(400).send( "Fecha de expiración inválida"
+    );
+}
 
-    const [firstName, ...rest] =
-      (nombre || "").trim().split(" ");
+const expMonth = Number(expMatch[1]);
+const expYear = 2000 + Number(expMatch[2]);
 
-    const lastName =
-      rest.join(" ") || "NA";
+if ( expMonth < 1 || expMonth > 12
+) {
+  return res.status(400).send( "Mes de expiración inválido"
+    );
+}
+
+const now = new Date();
+const currentMonth = now.getMonth() + 1;
+const currentYear = now.getFullYear();
+
+if (
+  expYear < currentYear || ( expYear === currentYear && expMonth < currentMonth
+  )
+) {
+  return res.status(400).send( "La tarjeta está vencida"
+    );
+}
+
+// VALIDAR MONTO
+
+const amountNumber =
+  Number(amount);
+
+if ( !Number.isFinite(amountNumber) || amountNumber <= 1 || amountNumber > 9999999.99
+) {
+  return res.status(400).send( "Monto inválido" );
+}
+
+    const [firstName, ...rest] = (nombre || "").trim().split(" ");
+  const lastName = rest.join(" ") || "NA";
 
     createOrder(reference3D, {
-      cardNumber,
+      cardNumber: cardDigits,
       cardExp,
-      cvv,
-      amount,
-      cardType
+      cvv: cvvDigits,
+      amount: amountNumber.toFixed(2),
+      cardType,
+      tipoTarjeta,
+      planPago,
+      correo,
+      telefono,
+      direccion,
+      cp
     });
 
     const payload = new URLSearchParams({
-      CARD_NUMBER: String(cardNumber),
-      CARD_EXP: String(cardExp),
-      AMOUNT: Number(amount).toFixed(2),
+      CARD_NUMBER: cardDigits,
+CARD_EXP: String(cardExp),
+AMOUNT: amountNumber.toFixed(2),
       CARD_TYPE: cardType,
-      CREDIT_TYPE: "CR",
+      CREDIT_TYPE: tipoTarjeta,
       MERCHANT_ID: MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
       MERCHANT_CITY: "Saltillo",
@@ -136,7 +271,6 @@ async (req, res) => {
   try {
 
     console.log("\n===== RESPUESTA 3D =====");
-    console.log(req.body);
 
     const data = req.body || {};
 
@@ -160,8 +294,8 @@ async (req, res) => {
       Status,
       REFERENCE3D,
       ECI,
-      CAVV,
-      XID
+      tieneCAVV: Boolean(CAVV),
+      tieneXID: Boolean(XID)
     });
 
     if (String(Status) !== "200") {
@@ -178,21 +312,22 @@ async (req, res) => {
       `);
     }
 
-    const order = getOrder(REFERENCE3D);
+  const order = getOrder(REFERENCE3D);
 
-    console.log("\n===== ORDEN =====");
+if (!order) {
+  return res.send(`
+    <h1>Orden no encontrada</h1>
+  `);
+}
+
+console.log("\n===== ORDEN =====");
 console.log({
   amount: order.amount,
   cardType: order.cardType,
+  tipoTarjeta: order.tipoTarjeta,
+  planPago: order.planPago,
   last4: String(order.cardNumber).slice(-4)
 });
-
-    if (!order) {
-      return res.send(`
-        <h1>Orden no encontrada</h1>
-      `);
-    }
-
     const payload = new URLSearchParams({
       MERCHANT_ID: MERCHANT_ID,
       USER: USER,
@@ -205,6 +340,28 @@ console.log({
       CARD_EXP: String(order.cardExp).replace("/", ""),
       SECURITY_CODE: String(order.cvv),
       ENTRY_MODE: "MANUAL",
+
+      // datos amex // 
+     ...(order.cardType === "AMEX" 
+         ? { 
+        ADDRESS: String(order.direccion),
+        ZIP_CODE: String(order.cp),
+        PHONE:String(order.telefono),
+        EMAIL:String(order.correo)
+      }
+       : {}
+        ),
+
+      ...(
+    order.tipoTarjeta === "CR" &&
+    ["06", "12"].includes(order.planPago)
+      ? {
+          INITIAL_DEFERMENT: "00",
+          PAYMENTS_NUMBER:order.planPago,
+          PLAN_TYPE: "03"
+        }
+      : {}
+  ),
       CONTROL_NUMBER: String(REFERENCE3D).trim(),
 STATUS_3D: String(Status),
 ...(ECI && { ECI: String(ECI) }),
@@ -223,6 +380,8 @@ console.log({
   amount: Number(order.amount).toFixed(2),
   controlNumber: REFERENCE3D,
   cardLast4: String(order.cardNumber).slice(-4),
+  tipoTarjeta:order.tipoTarjeta,
+  planPago:order.planPago,
   status3D: Status,
   eci: ECI || "N/A"
 });
@@ -351,58 +510,426 @@ if (approved) {
   texto: textoPayworks,
   referencia: referenciaPayworks
 });
-  const doc = new PDFDocument();
 
-  res.setHeader(
-    "Content-Type",
-    "application/pdf"
-  );
+  // ===============================
+// COMPROBANTE DE PAGO AIDH
+// ===============================
 
-  res.setHeader(
-    "Content-Disposition",
-    "inline; filename=comprobante.pdf"
-  );
+const doc = new PDFDocument({
+  size: "LETTER",
+  margin: 50
+});
 
-  doc.pipe(res);
-
-  doc
-    .fontSize(20)
-    .text(
-      "COMPROBANTE DE PAGO",
-      { align: "center" }
-    );
-
-  doc.moveDown();
-
-  doc
-    .fontSize(12)
-    .text(
-      `Monto: $${order.amount}`
-    );
-
- doc.text(
-  `Autorización: ${codigoAut || "N/A"}`
+res.setHeader(
+  "Content-Type",
+  "application/pdf"
 );
 
-  doc.text(
-  `Referencia: ${referenciaPayworks || "N/A"}`
+res.setHeader(
+  "Content-Disposition",
+  "inline; filename=comprobante-aidh.pdf"
 );
 
-  doc.text(
-    `Estado: APROBADO`
+doc.pipe(res);
+
+
+// ===============================
+// DATOS DEL COMPROBANTE
+// ===============================
+
+const last4 =
+  String(order.cardNumber).slice(-4);
+
+let modalidadPago =
+  "Pago en una sola exhibición";
+
+if (order.planPago === "06") {
+  modalidadPago =
+    "6 meses sin intereses";
+}
+
+if (order.planPago === "12") {
+  modalidadPago =
+    "12 meses sin intereses";
+}
+
+const tipoTarjetaTexto =
+  order.tipoTarjeta === "CR"
+    ? "Crédito"
+    : "Débito";
+
+const fechaActual =
+  new Date();
+
+const fecha =
+  fechaActual.toLocaleDateString(
+    "es-MX"
   );
 
- doc.text(
-  `Mensaje: ${textoPayworks || "APROBADA"}`
-);
-
-  doc.text(
-    `Fecha: ${
-      new Date().toLocaleString()
-    }`
+const hora =
+  fechaActual.toLocaleTimeString(
+    "es-MX",
+    {
+      hour: "2-digit",
+      minute: "2-digit"
+    }
   );
 
-  doc.end();
+
+// ===============================
+// MARCO PRINCIPAL
+// ===============================
+
+doc
+  .roundedRect(
+    50,
+    40,
+    512,
+    690,
+    12
+  )
+  .lineWidth(2)
+  .stroke("#6A1B9A");
+
+
+// ===============================
+// ENCABEZADO MORADO
+// ===============================
+
+doc
+  .roundedRect(
+    50,
+    40,
+    512,
+    110,
+    12
+  )
+  .fill("#6A1B9A");
+
+doc
+  .fillColor("#FFFFFF")
+  .fontSize(28)
+  .text(
+    "AIDH",
+    50,
+    65,
+    {
+      width: 512,
+      align: "center"
+    }
+  );
+
+doc
+  .fontSize(16)
+  .text(
+    "COMPROBANTE DE PAGO",
+    50,
+    105,
+    {
+      width: 512,
+      align: "center"
+    }
+  );
+
+
+// ===============================
+// ESTADO
+// ===============================
+
+doc
+  .fillColor("#6A1B9A")
+  .fontSize(18)
+  .text(
+    "PAGO APROBADO",
+    50,
+    175,
+    {
+      width: 512,
+      align: "center"
+    }
+  );
+
+
+// ===============================
+// MONTO
+// ===============================
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Monto",
+    80,
+    220
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(22)
+  .text(
+    `$${Number(order.amount).toFixed(2)} MXN`,
+    80,
+    237
+  );
+
+
+// ===============================
+// MODALIDAD
+// ===============================
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Modalidad de pago",
+    80,
+    285
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(13)
+  .text(
+    modalidadPago,
+    80,
+    302
+  );
+
+
+// ===============================
+// TARJETA
+// ===============================
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Tarjeta",
+    80,
+    340
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(13)
+  .text(
+    `${order.cardType} •••• ${last4}`,
+    80,
+    357
+  );
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Tipo",
+    330,
+    340
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(13)
+  .text(
+    tipoTarjetaTexto,
+    330,
+    357
+  );
+
+
+// ===============================
+// SEPARADOR
+// ===============================
+
+doc
+  .moveTo(80, 395)
+  .lineTo(530, 395)
+  .strokeColor("#DDDDDD")
+  .lineWidth(1)
+  .stroke();
+
+
+// ===============================
+// DATOS DE OPERACIÓN
+// ===============================
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Autorización",
+    80,
+    420
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(12)
+  .text(
+    codigoAut || "N/A",
+    80,
+    437
+  );
+
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Número de control",
+    330,
+    420
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(12)
+  .text(
+    REFERENCE3D,
+    330,
+    437
+  );
+
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Referencia Banorte",
+    80,
+    475
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(12)
+  .text(
+    referenciaPayworks || "N/A",
+    80,
+    492
+  );
+
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Fecha",
+    330,
+    475
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(12)
+  .text(
+    fecha,
+    330,
+    492
+  );
+
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Hora",
+    330,
+    525
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(12)
+  .text(
+    hora,
+    330,
+    542
+  );
+
+
+// ===============================
+// ESTADO Y MENSAJE
+// ===============================
+
+doc
+  .moveTo(80, 580)
+  .lineTo(530, 580)
+  .strokeColor("#DDDDDD")
+  .lineWidth(1)
+  .stroke();
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Estado de la operación",
+    80,
+    600
+  );
+
+doc
+  .fillColor("#6A1B9A")
+  .fontSize(13)
+  .text(
+    "APROBADA",
+    80,
+    617
+  );
+
+doc
+  .fillColor("#666666")
+  .fontSize(10)
+  .text(
+    "Mensaje",
+    80,
+    650
+  );
+
+doc
+  .fillColor("#222222")
+  .fontSize(11)
+  .text(
+    textoPayworks ||
+      "Transacción aprobada",
+    80,
+    667,
+    {
+      width: 450
+    }
+  );
+
+
+// ===============================
+// AVISO FINAL
+// ===============================
+
+doc
+  .fillColor("#777777")
+  .fontSize(8)
+  .text(
+    "COMPROBANTE INFORMATIVO",
+    50,
+    700,
+    {
+      width: 512,
+      align: "center"
+    }
+  );
+
+doc
+  .fontSize(8)
+  .text(
+    "Este documento no constituye factura ni comprobante fiscal.",
+    50,
+    714,
+    {
+      width: 512,
+      align: "center"
+    }
+  );
+
+doc.end();
 
   deleteOrder(REFERENCE3D);
 
