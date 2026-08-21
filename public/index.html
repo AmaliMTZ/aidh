@@ -131,6 +131,7 @@ button:disabled {
     <input
       name="correo"
       type="email"
+      maxlength="60"
       placeholder="Correo electrónico"
       required
     >
@@ -201,26 +202,17 @@ button:disabled {
         name="planPago"
       >
         <option value="contado">
-          Pago de contado
-        </option>
+  Pago de contado
+</option>
 
-        <option value="03">
-          3 meses sin intereses
-        </option>
+<option value="06">
+  6 meses sin intereses
+</option>
 
-        <option value="06">
-          6 meses sin intereses
-        </option>
-
-        <option value="09">
-          9 meses sin intereses
-        </option>
-
-        <option value="12">
-          12 meses sin intereses
-        </option>
-      </select>
-
+<option value="12">
+  12 meses sin intereses
+</option>
+  /select>
     </div>
 
     <div class="section-title">
@@ -374,11 +366,43 @@ function validarForm() {
   const modalidad =
     planPago.value;
 
+  const cardExp =
+  document.querySelector(
+    '[name="cardExp"]'
+  ).value;
+
+const matchExp =
+  cardExp.match(
+    /^(\d{2})\/(\d{2})$/
+  );
+
+if (!matchExp) {
+
+  alert(
+    "Fecha de expiración inválida"
+  );
+
+  return false;
+}
+
+const mesExp =
+  Number(matchExp[1]);
+
+if (
+  mesExp < 1 ||
+  mesExp > 12
+) {
+
+  alert(
+    "Mes de expiración inválido"
+  );
+
+  return false;
+}
+
   const modalidadesPermitidas = [
     "contado",
-    "03",
     "06",
-    "09",
     "12"
   ];
 
