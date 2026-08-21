@@ -9,38 +9,22 @@ import {
 
 const router = Router();
 
-
-// ===============================
-// INICIO 3D
-// ===============================
 router.post("/3d-secure", start3DSecure);
 
-// ✅ OPCIONAL PERO RECOMENDADO
 router.get("/3d-secure", (req, res) => {
-    res.status(200).send("3D Secure endpoint activo");
-  }
-);
+  res.status(200).send("3D Secure endpoint activo");
+});
 
-// ===============================
-// RESPUESTA 3D
-// ===============================
 router.post("/3ds", handle3DSecureResponse);
 
-// ✅ IMPORTANTE
-// Algunos callbacks de Banorte llegan por GET
-router.get("/3ds", handle3DSecureResponse);
-// ===============================
-// RESPUESTA FINAL BANORTE
-// ===============================
+router.get("/3ds", (req, res) => {
+  console.log("GET /3ds ignorado");
+  return res.redirect("/");
+});
+
 router.post("/pay", handlePayResponse);
+router.get("/pay", handlePayResponse);
 
-// ✅ IMPORTANTE
-// Banorte puede llamar GET o POST
-router.get("/pay",  handlePayResponse);
-
-// ===============================
-// PDF
-// ===============================
 router.post("/receipt", generateReceipt);
 
 export default router;
