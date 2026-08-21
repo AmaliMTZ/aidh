@@ -89,7 +89,12 @@ export const start3DSecure = async (req, res) => {
     });
 
     console.log("\n===== REQUEST 3D =====");
-    console.log(payload.toString());
+console.log({
+  reference3D,
+  amount: Number(amount).toFixed(2),
+  cardType,
+  last4: String(cardNumber).slice(-4)
+});
 
     const response = await axios.post(
       "https://via.banorte.com/secure3d/Solucion3DSecure.htm",
@@ -176,7 +181,11 @@ async (req, res) => {
     const order = getOrder(REFERENCE3D);
 
     console.log("\n===== ORDEN =====");
-    console.log(order);
+console.log({
+  amount: order.amount,
+  cardType: order.cardType,
+  last4: String(order.cardNumber).slice(-4)
+});
 
     if (!order) {
       return res.send(`
@@ -197,16 +206,26 @@ async (req, res) => {
       SECURITY_CODE: String(order.cvv),
       ENTRY_MODE: "MANUAL",
       CONTROL_NUMBER: String(REFERENCE3D).trim(),
-      STATUS_3D: String(Status),
-      ECI: String(ECI || ""),
-      VERSION_3D: "2",
-      ...(CAVV && { CAVV }),
-      ...(XID && { XID }),
-      RESPONSE_LANGUAGE: "ES"
+STATUS_3D: String(Status),
+...(ECI && { ECI: String(ECI) }),
+VERSION_3D: "2",
+...(CAVV && { CAVV: String(CAVV) }),
+...(XID && { XID: String(XID) }),
+RESPONSE_LANGUAGE: "ES"
     });
 
     console.log("\n===== PAYLOAD PAYWORKS =====");
-    console.log(payload.toString());
+console.log({
+  merchantId: MERCHANT_ID,
+  terminalId: TERMINAL_ID,
+  cmdTrans: "VENTA",
+  mode: "PRD",
+  amount: Number(order.amount).toFixed(2),
+  controlNumber: REFERENCE3D,
+  cardLast4: String(order.cardNumber).slice(-4),
+  status3D: Status,
+  eci: ECI || "N/A"
+});
 
    const payResponse = await axios.post(
   "https://via.pagosbanorte.com/payw2",
@@ -271,35 +290,67 @@ if (typeof payResponse.data === "string") {
     console.log("\n===== DATA PAYWORKS =====");
     console.log(payData);
 
-    const headers = payResponse.headers;
+    const headers = payResponse.headers || {};
 
-    console.log("\n===== HEADERS PAYWORKS =====");
-console.log(headers);
-    
-const approved =
-  headers["resultado_payw"] === "A" ||
-  headers["payw_result"] === "A" ||
+// ===============================
+// RESULTADO REAL DE PAYWORKS
+// ===============================
+const resultadoPayworks =
+  payData.PAYW_RESULT ||
+  payData.RESULTADO_PAYW ||
+  headers["payw_result"] ||
+  headers["resultado_payw"] ||
+  "";
+
+const codigoAut =
+  payData.AUTH_CODE ||
+  payData.CODIGO_AUT ||
+  headers["auth_code"] ||
   headers["codigo_aut"] ||
-  headers["auth_code"];
+  "";
 
-    if (approved) {
+const codigoPayworks =
+  payData.PAYW_CODE ||
+  payData.CODIGO_PAYW ||
+  headers["payw_code"] ||
+  headers["codigo_payw"] ||
+  "";
+
+const textoPayworks =
+  payData.TEXT ||
+  payData.TEXTO ||
+  headers["text"] ||
+  headers["texto"] ||
+  "";
+
+const referenciaPayworks =
+  payData.REFERENCE ||
+  payData.REFERENCIA ||
+  headers["reference"] ||
+  headers["referencia"] ||
+  "";
+
+console.log("\n===== RESULTADO PAYWORKS =====");
+console.log({
+  resultadoPayworks,
+  codigoPayworks,
+  codigoAut,
+  referenciaPayworks,
+  textoPayworks
+});
+
+const approved = resultadoPayworks === "A";
+
+if (approved) {
 
   console.log("\n===== PAGO APROBADO =====");
 
   console.log({
-    resultado_payw:
-      headers["resultado_payw"],
-
-    codigo_aut:
-      headers["codigo_aut"],
-
-    texto:
-      headers["texto"],
-
-    referencia:
-      headers["referencia"]
-  });
-
+  resultado_payw: resultadoPayworks,
+  codigo_aut: codigoAut,
+  texto: textoPayworks,
+  referencia: referenciaPayworks
+});
   const doc = new PDFDocument();
 
   res.setHeader(
@@ -329,27 +380,21 @@ const approved =
       `Monto: $${order.amount}`
     );
 
-  doc.text(
-    `Autorización: ${
-      headers["codigo_aut"]
-    }`
-  );
+ doc.text(
+  `Autorización: ${codigoAut || "N/A"}`
+);
 
   doc.text(
-    `Referencia: ${
-      headers["referencia"]
-    }`
-  );
+  `Referencia: ${referenciaPayworks || "N/A"}`
+);
 
   doc.text(
     `Estado: APROBADO`
   );
 
-  doc.text(
-    `Mensaje: ${
-      headers["texto"]
-    }`
-  );
+ doc.text(
+  `Mensaje: ${textoPayworks || "APROBADA"}`
+);
 
   doc.text(
     `Fecha: ${
@@ -363,27 +408,66 @@ const approved =
 
   return;
 }
-    console.log("\n===== PAGO RECHAZADO =====");
-    console.log(payData);
+   console.log("\n===== PAGO NO APROBADO =====");
 
-    deleteOrder(REFERENCE3D);
+console.log({
+  resultado: resultadoPayworks,
+  codigoPayworks,
+  texto: textoPayworks,
+  referencia: referenciaPayworks
+});
 
-    return res.send(`
-      <html>
-        <body style="
-          font-family: Arial;
-          text-align: center;
-          padding-top: 100px;
-        ">
-          <h1>Pago rechazado</h1>
+deleteOrder(REFERENCE3D);
 
-          <pre>
-${JSON.stringify(payData, null, 2)}
-          </pre>
+let titulo = "Pago rechazado";
 
-        </body>
-      </html>
-    `);
+if (resultadoPayworks === "D") {
+  titulo = "Pago declinado";
+}
+
+if (resultadoPayworks === "T") {
+  titulo = "Sin respuesta del banco";
+}
+
+if (resultadoPayworks === "Z") {
+  titulo = "Operación reversada";
+}
+
+return res.send(`
+  <html>
+    <body style="
+      font-family: Arial;
+      text-align: center;
+      padding-top: 100px;
+    ">
+
+      <h1>${titulo}</h1>
+
+      <p>
+        ${textoPayworks || "La operación no pudo ser aprobada."}
+      </p>
+
+      ${
+        codigoPayworks
+          ? `<p>Código: ${codigoPayworks}</p>`
+          : ""
+      }
+
+      ${
+        referenciaPayworks
+          ? `<p>Referencia: ${referenciaPayworks}</p>`
+          : ""
+      }
+
+      <br>
+
+      <a href="/">
+        Intentar nuevamente
+      </a>
+
+    </body>
+  </html>
+`);
 
   } catch (error) {
 
@@ -442,11 +526,13 @@ export const handlePayResponse = (
   console.log("\n===== DATA =====");
   console.log(data);
 
-  const approved =
-    data.PAYW_RESULT === "A" ||
-    data.RESULTADO_PAYW === "A" ||
-    data.AUTH_CODE ||
-    data.CODIGO_AUTORIZACION;
+  const resultadoPayworks =
+  data.PAYW_RESULT ||
+  data.RESULTADO_PAYW ||
+  "";
+
+const approved =
+  resultadoPayworks === "A";
 
   const controlNumber =
     data.CONTROL_NUMBER ||
