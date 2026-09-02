@@ -382,6 +382,14 @@ console.log({
   cardLast4: String(order.cardNumber).slice(-4),
   tipoTarjeta:order.tipoTarjeta,
   planPago:order.planPago,
+  initialDeferment: order.tipoTarjeta === "CR" && ["06", "12"].includes(order.planPago)
+    ? "00" : "N/A",
+  paymentsNumber: order.tipoTarjeta === "CR" && ["06", "12"].includes(order.planPago)
+    ? order.planPago
+    : "N/A",
+  planType: order.tipoTarjeta === "CR" && ["06", "12"].includes(order.planPago)
+    ? "03"
+    : "N/A",
   status3D: Status,
   eci: ECI || "N/A"
 });
@@ -468,6 +476,13 @@ const codigoAut =
   headers["codigo_aut"] ||
   "";
 
+    const resultadoAutorizador =
+  payData.AUTH_RESULT ||
+  payData.RESULTADO_AUT ||
+  headers["auth_result"] ||
+  headers["resultado_aut"] ||
+  "";
+
 const codigoPayworks =
   payData.PAYW_CODE ||
   payData.CODIGO_PAYW ||
@@ -492,6 +507,7 @@ const referenciaPayworks =
 console.log("\n===== RESULTADO PAYWORKS =====");
 console.log({
   resultadoPayworks,
+  resultadoAutorizador,
   codigoPayworks,
   codigoAut,
   referenciaPayworks,
@@ -939,6 +955,7 @@ doc.end();
 
 console.log({
   resultado: resultadoPayworks,
+  resultadoAutorizador,
   codigoPayworks,
   texto: textoPayworks,
   referencia: referenciaPayworks
