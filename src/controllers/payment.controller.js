@@ -177,7 +177,7 @@ if (
 
 const amountNumber =
   Number(amount);
-
+//Limite de Monto
 if ( !Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 9999999.99
 ) {
   return res.status(400).send( "Monto inválido" );
