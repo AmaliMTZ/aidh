@@ -204,7 +204,7 @@ if ( !Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 999999
       CARD_NUMBER: cardDigits,
 CARD_EXP: String(cardExp),
 AMOUNT: amountNumber.toFixed(2),
-      CARD_TYPE: cardType,
+     // CARD_TYPE: cardType,
       CREDIT_TYPE: tipoTarjeta,
       MERCHANT_ID: MERCHANT_ID,
       MERCHANT_NAME: "ACADEMIAINTERAMERICANA",
