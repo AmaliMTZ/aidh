@@ -371,6 +371,12 @@ VERSION_3D: "2",
 RESPONSE_LANGUAGE: "ES"
     });
 
+    console.log("\n===== PAYLOAD REAL ENVIADO A PAYWORKS =====");
+
+console.log(
+  Object.fromEntries(payload.entries())
+);
+
     console.log("\n===== PAYLOAD PAYWORKS =====");
 console.log({
   merchantId: MERCHANT_ID,
@@ -512,6 +518,18 @@ console.log({
   codigoAut,
   referenciaPayworks,
   textoPayworks
+});
+
+    console.log("\n===== DIAGNÓSTICO DE RESPUESTA =====");
+console.log({
+  resultadoPayworks,
+  resultadoAutorizador,
+  codigoPayworks,
+  codigoAut,
+  referenciaPayworks,
+  textoPayworks,
+  payData,
+  headers
 });
 
 const approved = resultadoPayworks === "A";
