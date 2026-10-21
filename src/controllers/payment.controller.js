@@ -15,6 +15,32 @@ import {
   deleteOrder
 } from "../services/order.service.js";
 
+const SENSITIVE_KEYS = [
+  "PASSWORD", "USER", "CARD_NUMBER", "CARD_EXP", "SECURITY_CODE",
+  "CAVV", "XID", "EMAIL", "PHONE", "MOBILE_PHONE", "ADDRESS", "ZIP_CODE"
+];
+
+const maskPayload = (obj = {}) => {
+  const safe = { ...obj };
+  for (const k of SENSITIVE_KEYS) {
+    if (safe[k]) safe[k] = "***";
+  }
+  return safe;
+};
+
+const pickHeaders = (h = {}) => ({
+  resultado_payw: h.resultado_payw,
+  resultado_aut: h.resultado_aut,
+  codigo_aut: h.codigo_aut,
+  texto: h.texto,
+  referencia: h.referencia,
+  banco_emisor: h.banco_emisor,
+  marca_tarjeta: h.marca_tarjeta,
+  tipo_tarjeta: h.tipo_tarjeta,
+  numero_control: h.numero_control,
+  fecha_rsp_aut: h.fecha_rsp_aut
+});
+
 // ===============================
 // DETECTAR TARJETA
 // ===============================
@@ -242,19 +268,15 @@ console.log({
       }
     );
 
-    console.log("\n===== RESPONSE 3D =====");
-    console.log(response.data);
+        console.log("\n===== RESPONSE 3D =====");
+    console.log("Respuesta recibida, bytes:", String(response.data).length);
 
     return res.send(response.data);
 
   } catch (error) {
 
-    console.error("\n===== ERROR 3D =====");
-
-    console.error(
-      error.response?.data ||
-      error.message
-    );
+        console.error("\n===== ERROR 3D =====");
+    console.error("Error:", error.message, error.response?.status);
 
     return res
       .status(500)
@@ -374,7 +396,7 @@ RESPONSE_LANGUAGE: "ES"
     console.log("\n===== PAYLOAD REAL ENVIADO A PAYWORKS =====");
 
 console.log(
-  Object.fromEntries(payload.entries())
+  maskPayload(Object.fromEntries(payload.entries()))
 );
 
     console.log("\n===== PAYLOAD PAYWORKS =====");
@@ -420,7 +442,7 @@ console.log(
 
 console.log(
   "HEADERS:",
-  payResponse.headers
+  pickHeaders(payResponse.headers)
 );
     console.log("\n===== RESPUESTA PAYWORKS =====");
 
@@ -429,8 +451,7 @@ console.log(
       typeof payResponse.data
     );
 
-    console.log("Contenido:");
-    console.log(payResponse.data);
+    console.log("Contenido (bytes):", String(payResponse.data ?? "").length);
 
     let payData = {};
 
@@ -439,7 +460,7 @@ if (typeof payResponse.data === "string") {
   const raw = payResponse.data.trim();
 
   console.log("\n===== RAW PAYWORKS =====");
-  console.log(raw);
+  console.log("RAW bytes:", raw.length);
 
   if (raw.includes("=")) {
 
@@ -460,8 +481,8 @@ if (typeof payResponse.data === "string") {
   payData = payResponse.data || {};
 }
 
-    console.log("\n===== DATA PAYWORKS =====");
-    console.log(payData);
+        console.log("\n===== DATA PAYWORKS =====");
+    console.log(maskPayload(payData));
 
     const headers = payResponse.headers || {};
 
@@ -527,9 +548,7 @@ console.log({
   codigoPayworks,
   codigoAut,
   referenciaPayworks,
-  textoPayworks,
-  payData,
-  headers
+    textoPayworks
 });
 
 const approved = resultadoPayworks === "A";
@@ -1033,14 +1052,8 @@ return res.send(`
 
   } catch (error) {
 
-    console.error(
-      "\n===== ERROR PAYWORKS ====="
-    );
-
-    console.error(
-      error.response?.data ||
-      error.message
-    );
+        console.error("\n===== ERROR PAYWORKS =====");
+    console.error("Error:", error.message, error.response?.status);
 
     return res.send(`
       <h1>Error procesando pago</h1>
@@ -1060,15 +1073,7 @@ export const handlePayResponse = (
     "\n===== CALLBACK BANORTE ====="
   );
 
-  console.log(
-    "URL:",
-    req.originalUrl
-  );
-
-  console.log(
-    "BODY:",
-    req.body
-  );
+  console.log("URL:", req.path);
 
   let data = {};
 
@@ -1086,7 +1091,7 @@ export const handlePayResponse = (
   }
 
   console.log("\n===== DATA =====");
-  console.log(data);
+    console.log(maskPayload(data));
 
   const resultadoPayworks =
   data.PAYW_RESULT ||
@@ -1120,8 +1125,7 @@ const approved =
   console.log(
     "\n===== PAGO RECHAZADO ====="
   );
-
-  console.log(data);
+  console.log(maskPayload(data));
 
   deleteOrder(controlNumber);
 
