@@ -389,8 +389,9 @@ STATUS_3D: String(Status),
 ...(ECI && { ECI: String(ECI) }),
 VERSION_3D: "2",
 ...(CAVV && { CAVV: String(CAVV) }),
-...(XID && { XID: String(XID) }),
+...(XID && order.cardType !== "MC" && { XID: String(XID) }),
 RESPONSE_LANGUAGE: "ES"
+      
     });
 
     console.log("\n===== PAYLOAD REAL ENVIADO A PAYWORKS =====");
