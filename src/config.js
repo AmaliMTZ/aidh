@@ -109,7 +109,6 @@ function validateEnv() {
 
   console.log({
     MERCHANT_ID,
-    USER,
     TERMINAL_ID,
     BASE_URL
   });
